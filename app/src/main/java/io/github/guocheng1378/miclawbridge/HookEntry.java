@@ -39,6 +39,10 @@ public class HookEntry extends XposedModule {
 
     private void startBridge(Context context) {
         try {
+            Config.load(context.getApplicationContext());
+            Logger.d("Config loaded: port=" + Config.HTTP_PORT
+                + " llmKey=" + (Config.LLM_API_KEY.isEmpty() ? "empty" : "set")
+                + " llmProxy=" + Config.LLM_PROXY_ENABLED);
             HttpServer server = new HttpServer(context);
             server.start();
             Logger.d("Miclaw API Bridge started on 127.0.0.1:8787");

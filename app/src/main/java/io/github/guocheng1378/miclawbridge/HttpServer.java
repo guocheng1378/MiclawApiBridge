@@ -141,6 +141,13 @@ public class HttpServer {
             } else if ("/v1/models".equals(path)
                        && ("GET".equals(method) || "POST".equals(method))) {
                 sendResponse(os, 200, OpenAiCompat.buildModelList().toString());
+            } else if ("/v1/tools".equals(path) && "GET".equals(method)) {
+                JSONObject tr = new JSONObject();
+                tr.put("object", "list");
+                tr.put("proxy", Config.LLM_PROXY_ENABLED && !Config.LLM_API_KEY.isEmpty());
+                tr.put("model", Config.LLM_MODEL);
+                tr.put("note", "超级小爱内置工具由它自动调用; LSPilot 自定义工具走 LLM 代理");
+                sendResponse(os, 200, tr.toString());
             } else if ("/v1/chat/completions".equals(path) && "POST".equals(method)) {
                 handleChatCompletions(os, body);
             } else if ("/v1/chat".equals(path) && "POST".equals(method)) {
@@ -184,6 +191,15 @@ public class HttpServer {
         boolean stream = reqObj.optBoolean("stream", false);
         String model = reqObj.optString("model", "miclaw");
         JSONArray messages = reqObj.optJSONArray("messages");
+        JSONArray tools = reqObj.optJSONArray("tools");
+
+        // LLM 代理: 带 tools 且已配置 key → 转发 DeepSeek (支持 tool_calls)
+        if (Config.LLM_PROXY_ENABLED && !Config.LLM_API_KEY.isEmpty()
+            && tools != null && tools.length() > 0) {
+            Logger.d("FunctionCalling: proxying to " + Config.LLM_MODEL);
+            proxyLLM(os, body, stream);
+            return;
+        }
 
         // 拼接 messages (system + history + user)
         StringBuilder sb = new StringBuilder();
@@ -260,6 +276,66 @@ public class HttpServer {
             if (b != 13) sb.append((char) b);
         }
         return sb.toString();
+    }
+
+    /**
+     * LLM 代理: 转发到 OpenAI 兼容模型 (DeepSeek), 支持流式透传
+     * API Key 从 Config (SharedPreferences) 读取, 不写死在代码
+     */
+    private void proxyLLM(OutputStream os, String body, boolean stream) {
+        java.net.HttpURLConnection conn = null;
+        try {
+            // 重写 model 为代理模型
+            JSONObject b = new JSONObject(body);
+            b.put("model", Config.LLM_MODEL);
+            String outBody = b.toString();
+
+            java.net.URL url = new java.net.URL(Config.LLM_BASE_URL + "/chat/completions");
+            conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + Config.LLM_API_KEY);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(120000);
+            conn.getOutputStream().write(outBody.getBytes("UTF-8"));
+
+            int code = conn.getResponseCode();
+            java.io.InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+
+            if (stream) {
+                StringBuilder h = new StringBuilder();
+                h.append("HTTP/1.1 200 OK\r\n");
+                if (CORS) h.append("Access-Control-Allow-Origin: *\r\n");
+                h.append("Content-Type: text/event-stream; charset=utf-8\r\n");
+                h.append("Cache-Control: no-cache\r\nConnection: close\r\n\r\n");
+                os.write(h.toString().getBytes("UTF-8"));
+                os.flush();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = is.read(buf)) >= 0) {
+                    os.write(buf, 0, n);
+                    os.flush();
+                }
+            } else {
+                StringBuilder sb = new StringBuilder();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = is.read(buf)) >= 0) {
+                    sb.append(new String(buf, 0, n, "UTF-8"));
+                }
+                sendResponse(os, code, sb.toString());
+            }
+            if (is != null) try { is.close(); } catch (Exception ignored) {}
+        } catch (Exception e) {
+            Logger.e("proxyLLM: " + e.getMessage());
+            try {
+                sendResponse(os, 502, OpenAiCompat.buildError(
+                    "LLM proxy error: " + e.getMessage(), "server_error", "proxy_error").toString());
+            } catch (Exception ignored) {}
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private void sendResponse(OutputStream os, int code, String body) throws Exception {

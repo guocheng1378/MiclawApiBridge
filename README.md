@@ -3,6 +3,9 @@
 把小米超级小爱 (com.aios.osbot) 的 AI 能力暴露为本机 **OpenAI 兼容 HTTP API** 的 Xposed 模块。
 
 ## 功能
+- 设置界面 (模块图标点击进入): 端口 / Token / LLM 代理配置
+- Function Calling 代理: 带 tools 请求转发 DeepSeek (LSPilot 工具调用支持)
+- LLM API Key 安全存储在本机 SharedPreferences, 不写入仓库
 - 本机 HTTP 服务 (127.0.0.1:8787)
 - OpenAI 兼容: `POST /v1/chat/completions`（流式/非流式）
 - 模型列表: `GET /v1/models`
