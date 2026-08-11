@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.xiaomi.miclaw.bridge"
+    namespace = "io.github.guocheng1378.miclawbridge"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.xiaomi.miclaw.bridge"
+        applicationId = "io.github.guocheng1378.miclawbridge"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

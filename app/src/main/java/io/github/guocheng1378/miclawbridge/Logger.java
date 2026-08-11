@@ -1,4 +1,4 @@
-package com.xiaomi.miclaw.bridge;
+package io.github.guocheng1378.miclawbridge;
 
 import android.util.Log;
 
