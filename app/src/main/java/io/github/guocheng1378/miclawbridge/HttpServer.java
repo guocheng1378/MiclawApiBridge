@@ -164,44 +164,6 @@ public class HttpServer {
         }
     }
 
-    /** LLM 代理: 转发到 OpenAI 兼容模型 (DeepSeek), model 重写为代理模型, 支持流式透传 */
-    private void proxyLLM(OutputStream os, String body, boolean stream) throws Exception {
-        java.net.URL url = new java.net.URL(Config.LLM_BASE_URL + "/chat/completions");
-        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setRequestProperty("Authorization", "Bearer " + Config.LLM_API_KEY);
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(15000);
-        conn.setReadTimeout(60000);
-        JSONObject b = new JSONObject(body);
-        b.put("model", Config.LLM_MODEL);
-        byte[] data = b.toString().getBytes("UTF-8");
-        conn.getOutputStream().write(data);
-        conn.getOutputStream().flush();
-        int code = conn.getResponseCode();
-        InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-        if (stream) {
-            StringBuilder h = new StringBuilder();
-            h.append("HTTP/1.1 200 OK\r\n");
-            if (CORS) h.append("Access-Control-Allow-Origin: *\r\n");
-            h.append("Content-Type: text/event-stream; charset=utf-8\r\n");
-            h.append("Cache-Control: no-cache\r\nConnection: close\r\n\r\n");
-            os.write(h.toString().getBytes("UTF-8"));
-            os.flush();
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = is.read(buf)) >= 0) { os.write(buf, 0, n); os.flush(); }
-        } else {
-            StringBuilder sb = new StringBuilder();
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = is.read(buf)) >= 0) sb.append(new String(buf, 0, n, "UTF-8"));
-            sendResponse(os, code, sb.toString());
-        }
-        is.close();
-    }
-
     private void handleV1Chat(OutputStream os, String body) throws Exception {
         JSONObject reqObj = new JSONObject(body);
         String text = reqObj.optString("text", "");
