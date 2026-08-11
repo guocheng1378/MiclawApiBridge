@@ -28,6 +28,7 @@ android {
 }
 
 dependencies {
-    // Xposed API 不在 Maven Central, 使用本地 jar
+    // 标准 Xposed API 82 (LSPosed 兼容, 官方推荐)
+    // 不在 Maven Central, 使用本地 jar
     compileOnly(files("libs/api-82.jar"))
 }

@@ -11,8 +11,12 @@
 - 独立会话隔离（不污染主对话）
 - 自动探测 Agent / socket / 登录状态
 
+## 兼容性
+- 基于标准 Xposed API 82（LSPosed 官方推荐），兼容最新 LSPosed 框架
+- 元数据: xposedmodule / xposedminversion=82 / xposedscope=com.aios.osbot
+
 ## 使用
-1. Android Studio 编译出 APK
+1. Android Studio 编译出 APK（或从 GitHub Release 下载）
 2. 安装并在 LSPosed 中启用（作用域: com.aios.osbot）
 3. 重启超级小爱
 4. 任意 OpenAI 客户端接入:
