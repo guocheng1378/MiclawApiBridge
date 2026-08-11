@@ -39,7 +39,7 @@ public class HookEntry extends XposedModule {
 
     private void startBridge(Context context) {
         try {
-            Config.load(context.getApplicationContext());
+            Config.loadFrom(context.getApplicationContext());
             Logger.d("Config loaded: port=" + Config.HTTP_PORT
                 + " llmKey=" + (Config.LLM_API_KEY.isEmpty() ? "empty" : "set")
                 + " llmProxy=" + Config.LLM_PROXY_ENABLED);
