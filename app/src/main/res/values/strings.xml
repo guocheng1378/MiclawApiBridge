@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Miclaw API Bridge</string>
+    <string-array name="xposed_scope">
+        <item>com.aios.osbot</item>
+    </string-array>
+</resources>
