@@ -6,20 +6,10 @@
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:description="@string/module_desc">
 
-        <meta-data
-            android:name="xposedmodule"
-            android:value="true" />
-        <meta-data
-            android:name="xposeddescription"
-            android:value="把超级小爱(AI)暴露为本机 OpenAI 兼容 HTTP API" />
-        <meta-data
-            android:name="xposedminversion"
-            android:value="82" />
-        <meta-data
-            android:name="xposedscope"
-            android:resource="@array/xposed_scope" />
+        <!-- LibXposed API 102 模块入口在 META-INF/xposed/java_init.list 声明 -->
 
     </application>
 </manifest>

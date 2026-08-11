@@ -18,6 +18,7 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
@@ -28,7 +29,6 @@ android {
 }
 
 dependencies {
-    // 标准 Xposed API 82 (LSPosed 兼容, 官方推荐)
-    // 不在 Maven Central, 使用本地 jar
-    compileOnly(files("libs/api-82.jar"))
+    // LibXposed API 102 (最新 LSPosed 框架 API, Maven Central)
+    compileOnly("io.github.libxposed:api:102.0.0")
 }

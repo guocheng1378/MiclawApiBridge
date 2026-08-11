@@ -12,12 +12,13 @@
 - 自动探测 Agent / socket / 登录状态
 
 ## 兼容性
-- 基于标准 Xposed API 82（LSPosed 官方推荐），兼容最新 LSPosed 框架
-- 元数据: xposedmodule / xposedminversion=82 / xposedscope=com.aios.osbot
+- 基于 **LibXposed API 102**（最新 LSPosed 框架 API，Maven Central: io.github.libxposed:api:102.0.0）
+- 入口: META-INF/xposed/java_init.list + module.prop (minApiVersion=101, targetApiVersion=102)
+- 作用域: scope.list = com.aios.osbot
 
 ## 使用
-1. Android Studio 编译出 APK（或从 GitHub Release 下载）
-2. 安装并在 LSPosed 中启用（作用域: com.aios.osbot）
+1. 从 GitHub Release 下载 APK 或 Android Studio 编译
+2. 安装并在 **LSPosed (1.9+)** 中启用（作用域: com.aios.osbot）
 3. 重启超级小爱
 4. 任意 OpenAI 客户端接入:
    - Base URL: `http://127.0.0.1:8787/v1`

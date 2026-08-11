@@ -2,36 +2,39 @@ package io.github.guocheng1378.miclawbridge;
 
 import android.content.Context;
 
-import de.robv.android.xposed.IXposedHookLoadPackage;
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import java.lang.reflect.Method;
+
+import io.github.libxposed.api.XposedModule;
 
 /**
- * Xposed 入口: 注入 com.aios.osbot, 启动 HTTP Bridge
+ * LibXposed API 102 模块入口 (最新 LSPosed 框架)
  */
-public class HookEntry implements IXposedHookLoadPackage {
+public class HookEntry extends XposedModule {
 
     @Override
-    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
-        if (!"com.aios.osbot".equals(lpparam.packageName)) {
-            return;
-        }
+    public void onPackageLoaded(PackageLoadedParam param) {
+        // 早期回调: 默认 ClassLoader 就绪 (API 29+), 这里不做重活
+    }
 
-        Logger.d("HookEntry: injected into " + lpparam.packageName);
-
-        // 等 Application 创建后拿 Context 启动服务
-        XposedHelpers.findAndHookMethod(
-            "android.app.Application", lpparam.classLoader,
-            "attach", Context.class,
-            new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) {
-                    Context appContext = (Context) param.args[0];
-                    Logger.d("Application attached, starting bridge...");
-                    startBridge(appContext.getApplicationContext());
+    @Override
+    public void onPackageReady(PackageReadyParam param) {
+        if (!"com.aios.osbot".equals(param.getPackageName())) return;
+        try {
+            // Hook Application.attach 获取 Context, 然后启动 HTTP Bridge
+            Class<?> appClass = Class.forName("android.app.Application", true, param.getClassLoader());
+            Method attach = appClass.getDeclaredMethod("attach", Context.class);
+            hook(attach).intercept(chain -> {
+                Object result = chain.proceed();
+                Context ctx = (Context) chain.getArg(0);
+                if (ctx != null) {
+                    startBridge(ctx.getApplicationContext());
                 }
+                return result;
             });
+            Logger.d("HookEntry: hooked Application.attach for com.aios.osbot");
+        } catch (Throwable t) {
+            Logger.e("HookEntry: failed to hook Application.attach", t);
+        }
     }
 
     private void startBridge(Context context) {
@@ -40,7 +43,7 @@ public class HookEntry implements IXposedHookLoadPackage {
             server.start();
             Logger.d("Miclaw API Bridge started on 127.0.0.1:8787");
         } catch (Throwable t) {
-            Logger.e("Bridge start failed: " + t.getMessage(), t);
+            Logger.e("Miclaw API Bridge start failed", t);
         }
     }
 }
