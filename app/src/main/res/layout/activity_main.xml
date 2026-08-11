@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F6FA">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="MiclawApiBridge"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A" />
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="本机 OpenAI 兼容 API · LibXposed API 102"
+            android:textSize="13sp"
+            android:textColor="#666666" />
+
+        <EditText
+            android:id="@+id/et_port"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="HTTP 端口 (默认 8787)"
+            android:inputType="number"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
+        <EditText
+            android:id="@+id/et_token"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="API Token (可选, 留空不鉴权)"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
+        <Switch
+            android:id="@+id/sw_proxy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="启用 LLM 代理 (Function Calling / LSPosed 工具支持)" />
+
+        <EditText
+            android:id="@+id/et_base"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="LLM Base URL (如 https://api.deepseek.com/v1)"
+            android:inputType="textUri"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
+        <EditText
+            android:id="@+id/et_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="LLM API Key (仅保存在本机)"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
+        <EditText
+            android:id="@+id/et_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="LLM 模型名 (如 deepseek-v4-flash)"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="保存配置"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="提示: 保存后需重启超级小爱 (com.aios.osbot) 使配置生效。\n调用地址: http://127.0.0.1:端口/v1"
+            android:textSize="12sp"
+            android:textColor="#999999" />
+    </LinearLayout>
+</ScrollView>
