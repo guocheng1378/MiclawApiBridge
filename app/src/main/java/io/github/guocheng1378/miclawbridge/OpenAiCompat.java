@@ -125,13 +125,64 @@ public class OpenAiCompat {
     }
 
     public static JSONObject errorResponse(String msg) {
+        return buildError(msg, "server_error", null);
+    }
+
+    /** 标准 OpenAI 错误对象 */
+    public static JSONObject buildError(String message, String type, String code) {
         try {
             JSONObject r = new JSONObject();
             JSONObject e = new JSONObject();
-            e.put("message", msg);
-            e.put("type", "server_error");
+            e.put("message", message != null ? message : "Internal Server Error");
+            e.put("type", type != null ? type : "server_error");
+            if (code != null) e.put("code", code);
             r.put("error", e);
             return r;
+        } catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
+    /** OpenAPI 3.0 文档 */
+    public static JSONObject openapiDoc() {
+        try {
+            JSONObject doc = new JSONObject();
+            doc.put("openapi", "3.0.0");
+            JSONObject info = new JSONObject();
+            info.put("title", "MiclawApiBridge");
+            info.put("version", "1.1.0");
+            info.put("description", "把小米超级小爱(com.aios.osbot)的 AI 能力暴露为 OpenAI 兼容 API");
+            doc.put("info", info);
+
+            JSONObject paths = new JSONObject();
+            JSONObject chatPath = new JSONObject();
+            JSONObject post = new JSONObject();
+            post.put("operationId", "createChatCompletion");
+            post.put("summary", "Create a chat completion");
+            JSONObject reqBody = new JSONObject();
+            JSONArray required = new JSONArray();
+            required.put("messages");
+            JSONObject schema = new JSONObject();
+            schema.put("type", "object");
+            JSONObject props = new JSONObject();
+            JSONObject ms = new JSONObject();
+            ms.put("type", "array");
+            ms.put("items", new JSONObject().put("type", "object"));
+            props.put("messages", ms);
+            props.put("model", new JSONObject().put("type", "string"));
+            props.put("stream", new JSONObject().put("type", "boolean"));
+            schema.put("properties", props);
+            schema.put("required", required);
+            reqBody.put("content", new JSONObject().put("application/json", new JSONObject().put("schema", schema)));
+            post.put("requestBody", reqBody);
+            JSONObject resp200 = new JSONObject();
+            resp200.put("description", "OK");
+            resp200.put("content", new JSONObject().put("application/json", new JSONObject()));
+            post.put("responses", new JSONObject().put("200", resp200));
+            chatPath.put("post", post);
+            paths.put("/v1/chat/completions", chatPath);
+            doc.put("paths", paths);
+            return doc;
         } catch (Exception e) {
             return new JSONObject();
         }

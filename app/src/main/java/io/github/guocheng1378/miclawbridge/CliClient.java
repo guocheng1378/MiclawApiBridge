@@ -19,6 +19,11 @@ import java.util.UUID;
  */
 public class CliClient {
 
+    /** 流式增量回调 */
+    public interface TextSink {
+        void onDelta(String text);
+    }
+
     private final Context context;
 
     public CliClient(Context context) {
@@ -72,6 +77,11 @@ public class CliClient {
 
     /** 发送 CLI 请求并等待流式响应, 拼接成完整回复 */
     public CliResult chat(String text, String chatId, String agentId) {
+        return chat(text, chatId, agentId, null);
+    }
+
+    /** 流式版: 每收到增量文本回调 sink (完整帧去重: 已推过增量则跳过) */
+    public CliResult chat(String text, String chatId, String agentId, TextSink sink) {
         LocalSocket sock = null;
         try {
             sock = new LocalSocket();
@@ -107,6 +117,7 @@ public class CliClient {
             String err = null;
             String lastChatId = null;
             int frames = 0;
+            boolean[] pushedAny = new boolean[1];
             long deadline = System.currentTimeMillis() + Config.READ_TIMEOUT;
 
             while (true) {
@@ -143,9 +154,16 @@ public class CliClient {
                             boolean isStreaming = data.optBoolean("is_streaming", true);
                             if (isStreaming) {
                                 reply.append(t);
+                                if (sink != null) {
+                                    sink.onDelta(t);
+                                    pushedAny[0] = true;
+                                }
                             } else {
                                 reply.setLength(0);
                                 reply.append(t);
+                                if (sink != null && !pushedAny[0]) {
+                                    sink.onDelta(t);
+                                }
                             }
                         } else {
                             JSONObject m = data.optJSONObject("message");

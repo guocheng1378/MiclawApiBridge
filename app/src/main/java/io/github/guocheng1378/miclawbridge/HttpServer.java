@@ -14,12 +14,13 @@ import java.util.concurrent.Executors;
 
 /**
  * 极简 HTTP 服务器 (127.0.0.1)
- * 提供 OpenAI 兼容的 /v1/chat/completions 端点
+ * 提供 OpenAI 兼容 API: /v1/chat/completions (流式+非流式) /v1/models /openapi.json /health
  */
 public class HttpServer {
 
     private final Context context;
     private final CliClient cli;
+    private static final boolean CORS = true;
 
     public HttpServer(Context context) {
         this.context = context;
@@ -27,7 +28,6 @@ public class HttpServer {
     }
 
     public void start() {
-        // 后台初始化: 探测 socket / agent / auth
         new Thread(() -> {
             try {
                 Config.activeSocket = cli.resolveSocketName();
@@ -37,13 +37,8 @@ public class HttpServer {
                     cli.ensureService();
                     for (int i = 0; i < 20; i++) {
                         Thread.sleep(500);
-                        if (cli.isSocketAlive(Config.activeSocket)) {
-                            Logger.d("CLI up after " + ((i+1)*500) + "ms");
-                            break;
-                        }
+                        if (cli.isSocketAlive(Config.activeSocket)) break;
                     }
-                } else {
-                    Logger.d("CLI already alive");
                 }
                 cli.discoverAgent();
                 cli.checkAuth();
@@ -52,7 +47,6 @@ public class HttpServer {
             }
         }).start();
 
-        // HTTP 服务
         new Thread(() -> {
             try {
                 ServerSocket serverSocket = new ServerSocket();
@@ -60,7 +54,6 @@ public class HttpServer {
                 serverSocket.bind(new InetSocketAddress("127.0.0.1", Config.HTTP_PORT));
                 ExecutorService executor = Executors.newFixedThreadPool(Config.THREAD_POOL_SIZE);
                 Logger.d("HTTP listening on 127.0.0.1:" + Config.HTTP_PORT);
-
                 while (true) {
                     Socket client = serverSocket.accept();
                     executor.submit(() -> handleClient(client));
@@ -94,8 +87,8 @@ public class HttpServer {
                     String name = line.substring(0, idx).trim().toLowerCase();
                     String value = line.substring(idx + 1).trim();
                     if ("x-api-key".equals(name)) apiKey = value;
-                    if ("authorization".equals(name))
-                        apiKey = value.replace("Bearer ", "");
+                    if ("authorization".equals(name) && value.startsWith("Bearer "))
+                        apiKey = value.substring(7).trim();
                     if ("content-length".equals(name)) {
                         try { contentLength = Integer.parseInt(value); }
                         catch (Exception e) {}
@@ -115,26 +108,46 @@ public class HttpServer {
                 body = new String(bytes, 0, off, "UTF-8");
             }
 
-            if (Config.API_TOKEN.length() > 0
-                && !Config.API_TOKEN.equals(apiKey)) {
-                sendResponse(os, 401, "{\"error\":\"unauthorized\"}");
-                client.close(); return;
-            }
-
             String path = target;
             int qidx = target.indexOf("?");
             if (qidx >= 0) path = target.substring(0, qidx);
 
-            if ("/health".equals(path)) {
-                handleHealth(os);
-            } else if ("/v1/models".equals(path) && "GET".equals(method)) {
+            // 鉴权 (OPTIONS 预检跳过)
+            if (!"OPTIONS".equals(method)
+                && Config.API_TOKEN.length() > 0
+                && !Config.API_TOKEN.equals(apiKey)) {
+                sendResponse(os, 401, OpenAiCompat.buildError(
+                    "Invalid API key provided", "invalid_request_error", "invalid_api_key").toString());
+                client.close(); return;
+            }
+
+            if ("OPTIONS".equals(method)) {
+                sendResponse(os, 200, "{}");
+            } else if ("/".equals(path)) {
+                JSONObject r = new JSONObject();
+                r.put("name", "MiclawApiBridge");
+                r.put("version", "1.1.0");
+                r.put("docs", "/openapi.json");
+                r.put("models", "/v1/models");
+                sendResponse(os, 200, r.toString());
+            } else if ("/health".equals(path)) {
+                JSONObject r = new JSONObject();
+                r.put("status", "ok");
+                r.put("agent", Config.defaultAgentId);
+                r.put("socket", Config.activeSocket);
+                sendResponse(os, 200, r.toString());
+            } else if ("/openapi.json".equals(path)) {
+                sendResponse(os, 200, OpenAiCompat.openapiDoc().toString());
+            } else if ("/v1/models".equals(path)
+                       && ("GET".equals(method) || "POST".equals(method))) {
                 sendResponse(os, 200, OpenAiCompat.buildModelList().toString());
             } else if ("/v1/chat/completions".equals(path) && "POST".equals(method)) {
                 handleChatCompletions(os, body);
             } else if ("/v1/chat".equals(path) && "POST".equals(method)) {
                 handleV1Chat(os, body);
             } else {
-                sendResponse(os, 404, "{\"error\":\"not found\"}");
+                sendResponse(os, 404, OpenAiCompat.buildError(
+                    "Not Found", "invalid_request_error", "not_found").toString());
             }
 
             client.close();
@@ -144,15 +157,6 @@ public class HttpServer {
         }
     }
 
-    private void handleHealth(OutputStream os) throws Exception {
-        JSONObject r = new JSONObject();
-        r.put("ok", true);
-        r.put("agent", Config.defaultAgentId);
-        r.put("socket", Config.activeSocket);
-        r.put("version", "1.0.0");
-        sendResponse(os, 200, r.toString());
-    }
-
     private void handleV1Chat(OutputStream os, String body) throws Exception {
         JSONObject reqObj = new JSONObject(body);
         String text = reqObj.optString("text", "");
@@ -160,7 +164,8 @@ public class HttpServer {
         String agentId = reqObj.has("agentId") ? reqObj.optString("agentId") : null;
 
         if (text.length() == 0) {
-            sendResponse(os, 400, "{\"error\":\"missing 'text'\"}");
+            sendResponse(os, 400, OpenAiCompat.buildError(
+                "missing 'text'", "invalid_request_error", "missing_text").toString());
             return;
         }
 
@@ -179,16 +184,35 @@ public class HttpServer {
         boolean stream = reqObj.optBoolean("stream", false);
         String model = reqObj.optString("model", "miclaw");
         JSONArray messages = reqObj.optJSONArray("messages");
-        String text = OpenAiCompat.extractText(messages);
 
-        if (text.length() == 0) {
-            sendResponse(os, 400, "{\"error\":{\"message\":\"missing user message\",\"type\":\"invalid_request_error\"}}");
+        // 拼接 messages (system + history + user)
+        StringBuilder sb = new StringBuilder();
+        if (messages != null) {
+            for (int i = 0; i < messages.length(); i++) {
+                JSONObject m = messages.optJSONObject(i);
+                if (m == null) continue;
+                String role = m.optString("role", "user");
+                String content = m.optString("content", "");
+                if (content.isEmpty()) continue;
+                if ("system".equals(role)) {
+                    sb.append("系统指令: ").append(content).append("\n");
+                } else if ("assistant".equals(role)) {
+                    sb.append("助手: ").append(content).append("\n");
+                } else {
+                    sb.append("用户: ").append(content).append("\n");
+                }
+            }
+        }
+        String text = sb.toString().trim();
+        if (text.isEmpty()) {
+            sendResponse(os, 400, OpenAiCompat.buildError(
+                "messages is required", "invalid_request_error", "missing_messages").toString());
             return;
         }
 
-        // model -> agentId 映射
+        // model -> agentId (未知模型用默认)
         String agentId = model;
-        if (agentId == null || agentId.length() == 0
+        if (agentId == null || agentId.isEmpty()
             || "miclaw".equals(agentId) || "gpt-3.5-turbo".equals(agentId)
             || "gpt-4".equals(agentId) || "gpt-4o".equals(agentId)
             || "gpt-4o-mini".equals(agentId)) {
@@ -196,14 +220,32 @@ public class HttpServer {
         }
 
         if (stream) {
-            // 流式: 同步聚合后逐段推送(简化: 一次推送完整内容 + done)
-            sendResponse(os, 200, "stream mode not implemented in standalone; use sync");
+            // SSE 流式
+            StringBuilder sbHeader = new StringBuilder();
+            sbHeader.append("HTTP/1.1 200 OK\r\n");
+            if (CORS) sbHeader.append("Access-Control-Allow-Origin: *\r\n");
+            sbHeader.append("Content-Type: text/event-stream; charset=utf-8\r\n");
+            sbHeader.append("Cache-Control: no-cache\r\nConnection: close\r\n\r\n");
+            os.write(sbHeader.toString().getBytes("UTF-8"));
+            os.flush();
+
+            CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId, t -> {
+                try {
+                    os.write(OpenAiCompat.buildStreamChunk(model, t, null).getBytes("UTF-8"));
+                    os.flush();
+                } catch (Exception ignored) {}
+            });
+
+            os.write(OpenAiCompat.buildStreamChunk(model, null, "stop").getBytes("UTF-8"));
+            os.write("data: [DONE]\n\n".getBytes("UTF-8"));
+            os.flush();
             return;
         }
 
         CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId);
         if (r.error != null) {
-            sendResponse(os, 200, OpenAiCompat.errorResponse(r.error).toString());
+            sendResponse(os, 500, OpenAiCompat.buildError(
+                r.error, "server_error", "upstream_error").toString());
             return;
         }
         sendResponse(os, 200, OpenAiCompat.buildSyncResponse(model, r.reply).toString());
@@ -225,12 +267,20 @@ public class HttpServer {
         if (code == 400) reason = "Bad Request";
         if (code == 401) reason = "Unauthorized";
         if (code == 404) reason = "Not Found";
+        if (code == 429) reason = "Too Many Requests";
+        if (code == 500) reason = "Internal Server Error";
         byte[] bytes = body.getBytes("UTF-8");
-        String header = "HTTP/1.1 " + code + " " + reason + "\r\n"
-            + "Content-Type: application/json; charset=utf-8\r\n"
-            + "Content-Length: " + bytes.length + "\r\n"
-            + "Connection: close\r\n\r\n";
-        os.write(header.getBytes("UTF-8"));
+        StringBuilder header = new StringBuilder();
+        header.append("HTTP/1.1 ").append(code).append(" ").append(reason).append("\r\n");
+        if (CORS) {
+            header.append("Access-Control-Allow-Origin: *\r\n");
+            header.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+            header.append("Access-Control-Allow-Headers: Content-Type, Authorization, X-Api-Key\r\n");
+        }
+        header.append("Content-Type: application/json; charset=utf-8\r\n");
+        header.append("Content-Length: ").append(bytes.length).append("\r\n");
+        header.append("Connection: close\r\n\r\n");
+        os.write(header.toString().getBytes("UTF-8"));
         os.write(bytes);
         os.flush();
     }
