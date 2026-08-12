@@ -18,6 +18,19 @@ public class RootUtil {
         return out != null && out.contains("uid=0");
     }
 
+    /**
+     * 主动请求 root 授权 (触发 KernelSU/Magisk 授权弹窗)
+     * 首次执行 su 时框架会弹窗询问; 已授权则静默通过。
+     * 调用后可用 isRootAvailable() 查询结果。
+     */
+    public static boolean requestRoot() {
+        String out = exec("id");
+        boolean ok = out != null && out.contains("uid=0");
+        Logger.d("RootUtil.requestRoot: " + (ok ? "granted" : "denied")
+            + (out != null ? " (" + out.trim().substring(0, Math.min(30, out.trim().length())) + ")" : ""));
+        return ok;
+    }
+
     /** 以 root 执行命令, 返回合并输出 (stdout+stderr); 无 root 返回 null */
     public static String exec(String command) {
         return exec(command, 10);

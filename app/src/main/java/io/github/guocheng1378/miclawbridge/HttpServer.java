@@ -50,6 +50,8 @@ public class HttpServer {
                 }
                 cli.discoverAgent();
                 cli.checkAuth();
+                // v2.1: 服务启动即主动请求 root 授权 (触发 KernelSU/Magisk 弹窗)
+                RootUtil.requestRoot();
             } catch (Exception e) {
                 Logger.e("Init error: " + e.getMessage());
             }
@@ -229,6 +231,16 @@ public class HttpServer {
                 rr.put("ok", true);
                 rr.put("port", Config.HTTP_PORT);
                 sendResponse(os, 200, rr.toString());
+            } else if ("/v1/admin/root".equals(path) && "GET".equals(method)) {
+                // v2.1 主动请求 root 授权并返回状态 (不重启即时生效)
+                boolean granted = RootUtil.requestRoot();
+                JSONObject rt = new JSONObject();
+                rt.put("ok", granted);
+                rt.put("root", granted);
+                rt.put("hint", granted
+                    ? "root 已授权"
+                    : "被拒绝: 请到 KernelSU/Magisk 允许 com.aios.osbot 后重试本端点");
+                sendResponse(os, 200, rt.toString());
             } else if ("/v1/exec".equals(path) && "POST".equals(method)) {
                 handleExec(os, body);
             } else {

@@ -88,6 +88,11 @@ public class MainActivity extends Activity {
         tvRoot.setBackgroundColor(Color.parseColor("#F2F4F7"));
         root.addView(tvRoot);
 
+        Button btnRoot = new Button(this);
+        btnRoot.setText("立即授权 Root (触发弹窗, 无需重启)");
+        btnRoot.setOnClickListener(v -> requestRootNow());
+        root.addView(btnRoot);
+
         // ---------- 基本设置 ----------
         root.addView(sectionLabel("基本设置"));
 
@@ -235,6 +240,25 @@ public class MainActivity extends Activity {
                     tvRoot.setText("🔑 Root: 不可用 - 请到 Magisk/KernelSU 授权 com.aios.osbot (或不用 /v1/exec)");
                     tvRoot.setTextColor(Color.parseColor("#B06000"));
                 }
+            });
+        }).start();
+    }
+
+    /** 主动请求 root 授权: 触发 KernelSU/Magisk 弹窗, 不重启即时生效 */
+    private void requestRootNow() {
+        tvRoot.setText("🔑 Root: 请求授权中... (注意看 KernelSU 弹窗)");
+        new Thread(() -> {
+            boolean granted = RootUtil.requestRoot();
+            handler.post(() -> {
+                if (granted) {
+                    tvRoot.setText("🔑 Root: 可用 ✅ (授权成功, 无需重启)");
+                    tvRoot.setTextColor(Color.parseColor("#188038"));
+                    Toast("Root 授权成功!");
+                } else {
+                    tvRoot.setText("🔑 Root: 被拒绝 - 去 KernelSU 允许 com.aios.osbot 后重试");
+                    tvRoot.setTextColor(Color.parseColor("#D93025"));
+                }
+                checkStatus();
             });
         }).start();
     }
