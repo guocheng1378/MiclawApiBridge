@@ -3,7 +3,8 @@ name: Build APK
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
+    tags:
+      - '*'      # 任意 tag 触发 Release (v2.0 / 16-2.0 均可)
   workflow_dispatch:
 
 jobs:
