@@ -73,6 +73,20 @@ curl http://127.0.0.1:8787/v1/chat/completions \
 - **代码执行超时**：先给超级小爱授权 root（KernelSU/Magisk）
 - **流式不输出**：确认客户端支持 SSE
 
+## 🚀 一键发布（源码仓库 + LSP 市场）
+
+仓库自带 `release.sh`，一条命令完成：改版本号 → push → Actions 构建 → 同步到 LSP 市场仓库：
+
+```bash
+./release.sh 2.1 "修复端口冲突"          # 常规发布
+./release.sh 2.1 "新功能" --docs         # 同时更新市场 README
+```
+
+- 自动计算 versionCode 和市场 tag 序号（`<N>-<版本>` 格式）
+- 自动等待 Actions 构建完成并下载 APK 上传到市场仓库
+- Token 从 git remote 自动提取（或设置 `GH_TOKEN`）
+- 市场索引约 1-24h 内刷新到 https://modules.lsposed.org
+
 ## 🔨 开发
 
 ```bash
