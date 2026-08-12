@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
+    android:background="#F5F6FA"
     android:fillViewport="true">
 
     <LinearLayout
@@ -17,9 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="MiclawApiBridge"
-            android:textSize="24sp"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary" />
+            android:textColor="#1A1A1A" />
 
         <TextView
             android:id="@+id/tv_version"
@@ -27,247 +26,239 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textSize="12sp"
-            android:textColor="@color/text_secondary" />
+            android:textColor="#888888" />
 
-        <!-- 状态卡片 -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- 状态卡 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
+
+            <TextView
+                android:text="服务状态"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#888888" />
+
+            <TextView
+                android:id="@+id/tv_server_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="调用地址: http://127.0.0.1:8787/v1\nOpenAI 兼容 · 多模态 · 代码执行"
+                android:textSize="11sp"
+                android:textColor="#888888" />
+        </LinearLayout>
+
+        <!-- HTTP 配置 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
+
+            <TextView
+                android:text="HTTP 服务"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="端口 (默认 8787)"
+                android:textSize="12sp"
+                android:textColor="#666666" />
+
+            <EditText
+                android:id="@+id/et_port"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="API Token（留空=不鉴权；代码执行必填）"
+                android:textSize="12sp"
+                android:textColor="#666666" />
+
+            <EditText
+                android:id="@+id/et_token"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
+        </LinearLayout>
+
+        <!-- LLM 代理 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
                 <TextView
-                    android:text="服务状态"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_secondary" />
-
-                <TextView
-                    android:id="@+id/tv_server_status"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="调用地址: http://127.0.0.1:8787/v1\nOpenAI 兼容 · 多模态 · 代码执行"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_secondary" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- HTTP 服务配置 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:text="HTTP 服务"
+                    android:layout_weight="1"
+                    android:text="LLM 代理（Function Calling，可选）"
                     android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:textColor="#1A1A1A" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="端口 (默认 8787)"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_port"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="API Token（留空=不鉴权；代码执行必填）"
-                    app:passwordToggleEnabled="true"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_token"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword" />
-                </com.google.android.material.textfield.TextInputLayout>
+                <Switch
+                    android:id="@+id/sw_proxy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- LLM 代理配置 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="10dp"
+                android:text="Base URL"
+                android:textSize="12sp"
+                android:textColor="#666666" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+            <EditText
+                android:id="@+id/et_base"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="LLM 代理（Function Calling，可选）"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="API Key（仅存本机）"
+                android:textSize="12sp"
+                android:textColor="#666666" />
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/sw_proxy"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-                </LinearLayout>
+            <EditText
+                android:id="@+id/et_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Base URL"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="模型名（如 deepseek-v4-flash）"
+                android:textSize="12sp"
+                android:textColor="#666666" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_base"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="API Key（仅存本机）"
-                    app:passwordToggleEnabled="true"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_key"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="模型名（如 deepseek-v4-flash）"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_model"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <EditText
+                android:id="@+id/et_model"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
+        </LinearLayout>
 
         <!-- 路由表 -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
 
-            <LinearLayout
+            <TextView
+                android:text="路由表（高级）"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A" />
+
+            <EditText
+                android:id="@+id/et_routes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="8dp"
+                android:inputType="textMultiLine"
+                android:minLines="3"
+                android:padding="10dp"
+                android:background="@android:drawable/editbox_background" />
 
-                <TextView
-                    android:text="路由表（高级）"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="每行: 前缀=BaseURL|Key|模型名"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_routes"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textMultiLine"
-                        android:minLines="3" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="每行: 前缀=BaseURL|Key|模型名"
+                android:textSize="11sp"
+                android:textColor="#888888" />
+        </LinearLayout>
 
         <!-- 保存 -->
-        <com.google.android.material.button.MaterialButton
+        <Button
             android:id="@+id/btn_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="保存配置"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+            android:backgroundTint="#FF6200EE"
+            android:textColor="#FFFFFF" />
 
-        <!-- 帮助 -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- 说明 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
 
-            <LinearLayout
+            <TextView
+                android:text="📖 使用说明"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:text="📖 使用说明"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_secondary"
-                    android:text="1. 保存后重启超级小爱生效\n\n2. 调用地址:\n   http://127.0.0.1:8787/v1\n\n3. 常用端点:\n   POST /v1/chat/completions  (OpenAI 对话)\n   POST /v1/exec              (代码执行, 需Token+root)\n   GET  /v1/models             (模型列表)\n   GET  /v1/tools              (超级小爱工具清单)\n   GET  /health                (健康检查)\n\n4. 接入 OpenAI 客户端:\n   Base URL: http://127.0.0.1:8787/v1\n   API Key: 上面设置的 Token\n   Model: osbot.main\n\n5. 代码执行需: 设置Token + root授权超级小爱\n\n6. 端口被占会自动避让(+1)" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="2dp"
+                android:textSize="12sp"
+                android:textColor="#555555"
+                android:text="1. 保存后重启超级小爱生效\n\n2. 调用地址:\n   http://127.0.0.1:8787/v1\n\n3. 常用端点:\n   POST /v1/chat/completions  (OpenAI 对话)\n   POST /v1/exec              (代码执行, 需Token+root)\n   GET  /v1/models             (模型列表)\n   GET  /v1/tools              (超级小爱工具清单)\n   GET  /health                (健康检查)\n\n4. 接入 OpenAI 客户端:\n   Base URL: http://127.0.0.1:8787/v1\n   API Key: 上面设置的 Token\n   Model: osbot.main\n\n5. 代码执行需: 设置Token + root授权超级小爱\n\n6. 端口被占会自动避让(+1)" />
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

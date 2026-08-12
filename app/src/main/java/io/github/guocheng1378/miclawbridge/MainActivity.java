@@ -1,22 +1,19 @@
 package io.github.guocheng1378.miclawbridge;
 
+import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.materialswitch.MaterialSwitch;
-import com.google.android.material.textfield.TextInputEditText;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private TextView tvServerStatus;
-    private TextView tvVersion;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable statusRunnable = new Runnable() {
@@ -33,20 +30,20 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences sp = getSharedPreferences(Config.PREFS, MODE_PRIVATE);
 
-        TextInputEditText etPort = findViewById(R.id.et_port);
-        TextInputEditText etToken = findViewById(R.id.et_token);
-        MaterialSwitch swProxy = findViewById(R.id.sw_proxy);
-        TextInputEditText etBase = findViewById(R.id.et_base);
-        TextInputEditText etKey = findViewById(R.id.et_key);
-        TextInputEditText etModel = findViewById(R.id.et_model);
-        TextInputEditText etRoutes = findViewById(R.id.et_routes);
-        MaterialButton btnSave = findViewById(R.id.btn_save);
+        EditText etPort = findViewById(R.id.et_port);
+        EditText etToken = findViewById(R.id.et_token);
+        Switch swProxy = findViewById(R.id.sw_proxy);
+        EditText etBase = findViewById(R.id.et_base);
+        EditText etKey = findViewById(R.id.et_key);
+        EditText etModel = findViewById(R.id.et_model);
+        EditText etRoutes = findViewById(R.id.et_routes);
+        Button btnSave = findViewById(R.id.btn_save);
         tvServerStatus = findViewById(R.id.tv_server_status);
-        tvVersion = findViewById(R.id.tv_version);
+        TextView tvVersion = findViewById(R.id.tv_version);
 
-        tvVersion.setText("v" + BuildConfig.VERSION_NAME);
+        tvVersion.setText("v1.7.2");
 
-        // 回显配置
+        // 回显
         etPort.setText(String.valueOf(sp.getInt("http_port", Config.HTTP_PORT)));
         etToken.setText(sp.getString("api_token", Config.API_TOKEN));
         swProxy.setChecked(sp.getBoolean("llm_proxy_enabled", Config.LLM_PROXY_ENABLED));
@@ -55,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
         etModel.setText(sp.getString("llm_model", Config.LLM_MODEL));
         etRoutes.setText(sp.getString("llm_routes", ""));
 
-        // 状态检测
         checkServerStatus();
         handler.postDelayed(statusRunnable, 3000);
 
@@ -80,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
     private void checkServerStatus() {
         final int port;
         try {
-            port = Integer.parseInt(((TextInputEditText) findViewById(R.id.et_port)).getText().toString().trim());
+            port = Integer.parseInt(((EditText) findViewById(R.id.et_port)).getText().toString().trim());
         } catch (Exception e) {
             return;
         }
