@@ -11,8 +11,6 @@ import io.github.libxposed.api.XposedModule;
  */
 public class HookEntry extends XposedModule {
 
-    private final java.util.concurrent.atomic.AtomicBoolean started = new java.util.concurrent.atomic.AtomicBoolean(false);
-
     @Override
     public void onPackageLoaded(PackageLoadedParam param) {
         // 早期 hook Application.attach (onPackageReady 时 attach 可能已发生, 会错过!)
@@ -25,7 +23,7 @@ public class HookEntry extends XposedModule {
                 Object result = chain.proceed();
                 Context ctx = (Context) chain.getArg(0);
                 if (ctx != null) {
-                    startBridge(ctx.getApplicationContext());
+                    BridgeStarter.start(ctx.getApplicationContext());
                 }
                 return result;
             });
@@ -45,30 +43,12 @@ public class HookEntry extends XposedModule {
             currentApp.setAccessible(true);
             Context ctx = (Context) currentApp.invoke(null);
             if (ctx != null) {
-                Logger.d("HookEntry: onPackageReady fallback, starting bridge");
-                startBridge(ctx.getApplicationContext());
+                Logger.d("HookEntry: onPackageReady fallback");
+                BridgeStarter.start(ctx.getApplicationContext());
             }
         } catch (Throwable t) {
             Logger.e("HookEntry: onPackageReady fallback failed", t);
         }
     }
 
-    private void startBridge(Context context) {
-        // 防重入: 双保险只启动一次
-        if (!started.compareAndSet(false, true)) {
-            Logger.d("HookEntry: bridge already started, skip");
-            return;
-        }
-        try {
-            Config.loadFrom(context.getApplicationContext());
-            Logger.d("Config loaded: port=" + Config.HTTP_PORT
-                + " llmKey=" + (Config.LLM_API_KEY.isEmpty() ? "empty" : "set")
-                + " llmProxy=" + Config.LLM_PROXY_ENABLED);
-            HttpServer server = new HttpServer(context);
-            server.start();
-            Logger.d("Miclaw API Bridge started on 127.0.0.1:8787");
-        } catch (Throwable t) {
-            Logger.e("Miclaw API Bridge start failed", t);
-        }
-    }
 }

@@ -10,8 +10,8 @@ android {
         applicationId = "io.github.guocheng1378.miclawbridge"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.7.0"
+        versionCode = 10
+        versionName = "1.7.1"
     }
 
     buildFeatures {
@@ -38,4 +38,6 @@ dependencies {
     // UI
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
+    // 老 Xposed API (双兼容入口, 适配更多框架)
+    compileOnly(files("libs/api-82.jar"))
 }
