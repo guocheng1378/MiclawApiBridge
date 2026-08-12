@@ -4,5 +4,4 @@
     public <init>();
 }
 
--keep,allowoptimization,allowobfuscation class io.github.guocheng1378.miclawbridge.OldHookEntry { *; }
 -keep public class io.github.guocheng1378.miclawbridge.HookEntry { *; }

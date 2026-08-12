@@ -36,12 +36,10 @@ public class HttpServer {
     }
 
     public void start() {
-        DebugLog.w("HttpServer", "start() called, HTTP_PORT=" + Config.HTTP_PORT);
         new Thread(() -> {
             try {
                 Config.activeSocket = cli.resolveSocketName();
                 Logger.d("Socket: " + Config.activeSocket);
-                DebugLog.w("HttpServer", "socket resolved: " + Config.activeSocket);
                 if (!cli.isSocketAlive(Config.activeSocket)) {
                     Logger.d("CLI down, starting service...");
                     cli.ensureService();
@@ -81,7 +79,6 @@ public class HttpServer {
                 Config.HTTP_PORT = port;
                 ExecutorService executor = Executors.newFixedThreadPool(Config.THREAD_POOL_SIZE);
                 Logger.d("HTTP listening on 127.0.0.1:" + port);
-                DebugLog.w("HttpServer", "HTTP listening on 127.0.0.1:" + port);
                 while (true) {
                     Socket client = serverSocket.accept();
                     executor.submit(() -> handleClient(client));
