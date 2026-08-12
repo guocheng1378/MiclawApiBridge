@@ -11,18 +11,16 @@ import io.github.libxposed.api.XposedModule;
  */
 public class HookEntry extends XposedModule {
 
-    @Override
-    public void onPackageLoaded(PackageLoadedParam param) {
-        // 早期回调: 默认 ClassLoader 就绪 (API 29+), 这里不做重活
-    }
+    private final java.util.concurrent.atomic.AtomicBoolean started = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Override
-    public void onPackageReady(PackageReadyParam param) {
+    public void onPackageLoaded(PackageLoadedParam param) {
+        // 早期 hook Application.attach (onPackageReady 时 attach 可能已发生, 会错过!)
         if (!"com.aios.osbot".equals(param.getPackageName())) return;
         try {
-            // Hook Application.attach 获取 Context, 然后启动 HTTP Bridge
-            Class<?> appClass = Class.forName("android.app.Application", true, param.getClassLoader());
+            Class<?> appClass = Class.forName("android.app.Application", true, param.getDefaultClassLoader());
             Method attach = appClass.getDeclaredMethod("attach", Context.class);
+            attach.setAccessible(true);
             hook(attach).intercept(chain -> {
                 Object result = chain.proceed();
                 Context ctx = (Context) chain.getArg(0);
@@ -31,13 +29,36 @@ public class HookEntry extends XposedModule {
                 }
                 return result;
             });
-            Logger.d("HookEntry: hooked Application.attach for com.aios.osbot");
+            Logger.d("HookEntry: hooked Application.attach (onPackageLoaded)");
         } catch (Throwable t) {
-            Logger.e("HookEntry: failed to hook Application.attach", t);
+            Logger.e("HookEntry: onPackageLoaded hook attach failed", t);
+        }
+    }
+
+    @Override
+    public void onPackageReady(PackageReadyParam param) {
+        // 兜底: attach hook 可能错过, 直接反射拿当前 Application
+        if (!"com.aios.osbot".equals(param.getPackageName())) return;
+        try {
+            Class<?> atClass = Class.forName("android.app.ActivityThread", true, param.getClassLoader());
+            Method currentApp = atClass.getDeclaredMethod("currentApplication");
+            currentApp.setAccessible(true);
+            Context ctx = (Context) currentApp.invoke(null);
+            if (ctx != null) {
+                Logger.d("HookEntry: onPackageReady fallback, starting bridge");
+                startBridge(ctx.getApplicationContext());
+            }
+        } catch (Throwable t) {
+            Logger.e("HookEntry: onPackageReady fallback failed", t);
         }
     }
 
     private void startBridge(Context context) {
+        // 防重入: 双保险只启动一次
+        if (!started.compareAndSet(false, true)) {
+            Logger.d("HookEntry: bridge already started, skip");
+            return;
+        }
         try {
             Config.loadFrom(context.getApplicationContext());
             Logger.d("Config loaded: port=" + Config.HTTP_PORT

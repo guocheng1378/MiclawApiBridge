@@ -52,11 +52,28 @@ public class HttpServer {
 
         new Thread(() -> {
             try {
-                ServerSocket serverSocket = new ServerSocket();
-                serverSocket.setReuseAddress(true);
-                serverSocket.bind(new InetSocketAddress("127.0.0.1", Config.HTTP_PORT));
+                int port = Config.HTTP_PORT;
+                ServerSocket serverSocket = null;
+                // 端口被占时自动递增避让 (最多 +5)
+                for (int attempt = 0; attempt < 5; attempt++) {
+                    try {
+                        serverSocket = new ServerSocket();
+                        serverSocket.setReuseAddress(true);
+                        serverSocket.bind(new InetSocketAddress("127.0.0.1", port));
+                        break;
+                    } catch (Exception e) {
+                        Logger.d("Port " + port + " busy, trying " + (port + 1));
+                        port++;
+                        serverSocket = null;
+                    }
+                }
+                if (serverSocket == null) {
+                    Logger.e("HTTP server failed: no free port");
+                    return;
+                }
+                Config.HTTP_PORT = port;
                 ExecutorService executor = Executors.newFixedThreadPool(Config.THREAD_POOL_SIZE);
-                Logger.d("HTTP listening on 127.0.0.1:" + Config.HTTP_PORT);
+                Logger.d("HTTP listening on 127.0.0.1:" + port);
                 while (true) {
                     Socket client = serverSocket.accept();
                     executor.submit(() -> handleClient(client));
