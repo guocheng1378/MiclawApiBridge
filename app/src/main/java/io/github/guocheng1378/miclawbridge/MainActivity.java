@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
         EditText etBase = findViewById(R.id.et_base);
         EditText etKey = findViewById(R.id.et_key);
         EditText etModel = findViewById(R.id.et_model);
+        EditText etRoutes = findViewById(R.id.et_routes);
         TextView tvStatus = findViewById(R.id.tv_status);
         Button btnSave = findViewById(R.id.btn_save);
 
@@ -33,6 +34,7 @@ public class MainActivity extends Activity {
         etBase.setText(sp.getString("llm_base_url", Config.LLM_BASE_URL));
         etKey.setText(sp.getString("llm_api_key", Config.LLM_API_KEY));
         etModel.setText(sp.getString("llm_model", Config.LLM_MODEL));
+        etRoutes.setText(sp.getString("llm_routes", ""));
 
         btnSave.setOnClickListener(v -> {
             try {
@@ -43,6 +45,7 @@ public class MainActivity extends Activity {
                     .putString("llm_base_url", etBase.getText().toString().trim())
                     .putString("llm_api_key", etKey.getText().toString().trim())
                     .putString("llm_model", etModel.getText().toString().trim())
+                    .putString("llm_routes", etRoutes.getText().toString().trim())
                     .apply();
                 tvStatus.setText("✅ 已保存！重启超级小爱后生效");
                 tvStatus.setTextColor(0xFF2E7D32);

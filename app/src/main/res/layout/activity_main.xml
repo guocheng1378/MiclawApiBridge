@@ -85,6 +85,17 @@
             android:padding="12dp"
             android:background="@android:drawable/editbox_background" />
 
+        <EditText
+            android:id="@+id/et_routes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="路由表 (每行: ROUTE_前缀=BaseURL|APIKey|模型名)"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background" />
+
         <Button
             android:id="@+id/btn_save"
             android:layout_width="match_parent"

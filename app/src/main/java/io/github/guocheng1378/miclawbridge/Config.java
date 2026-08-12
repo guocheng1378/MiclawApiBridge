@@ -24,6 +24,9 @@ public class Config {
     public static String LLM_API_KEY = "";
     public static String LLM_MODEL = "deepseek-v4-flash";
 
+    // 路由表: 前缀 -> "BaseURL|APIKey|模型名" (来自设置界面, key 只存本机)
+    public static java.util.Map<String, String> LLM_ROUTES = new java.util.HashMap<>();
+
     // 运行时自动探测
     public static String activeSocket = CLI_SOCKET;
     public static String defaultAgentId = "osbot.main";
@@ -39,8 +42,26 @@ public class Config {
             LLM_BASE_URL = sp.getString("llm_base_url", LLM_BASE_URL);
             LLM_API_KEY = sp.getString("llm_api_key", LLM_API_KEY);
             LLM_MODEL = sp.getString("llm_model", LLM_MODEL);
+            // 解析路由表 (每行 ROUTE_前缀=BaseURL|APIKey|模型名)
+            LLM_ROUTES.clear();
+            String routes = sp.getString("llm_routes", "");
+            if (routes != null && !routes.isEmpty()) {
+                for (String line : routes.split("\\n")) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("#")) continue;
+                    int eq = line.indexOf('=');
+                    if (eq <= 0) continue;
+                    String prefix = line.substring(0, eq).trim();
+                    String val = line.substring(eq + 1).trim();
+                    if (prefix.startsWith("ROUTE_")) prefix = prefix.substring(6);
+                    if (!prefix.isEmpty() && !val.isEmpty()) {
+                        LLM_ROUTES.put(prefix, val);
+                    }
+                }
+            }
             Logger.d("Config loaded: port=" + HTTP_PORT
                 + " proxy=" + LLM_PROXY_ENABLED
+                + " routes=" + LLM_ROUTES.keySet().size()
                 + " key=" + (LLM_API_KEY.isEmpty() ? "empty" : "***"));
         } catch (Exception e) {
             Logger.e("Config.loadFrom: " + e.getMessage());

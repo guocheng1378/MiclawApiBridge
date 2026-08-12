@@ -193,11 +193,29 @@ public class HttpServer {
         JSONArray messages = reqObj.optJSONArray("messages");
         JSONArray tools = reqObj.optJSONArray("tools");
 
-        // LLM 代理: 带 tools 且已配置 key → 转发支持 function calling 的模型 (DeepSeek)
+        // LLM 代理: 路由表匹配 model 前缀才转发 (DeepSeek/Step 等), 否则走超级小爱
+        String proxyBase = Config.LLM_BASE_URL;
+        String proxyKey = Config.LLM_API_KEY;
+        String proxyModel = Config.LLM_MODEL;
+        String matchedRoute = null;
         if (Config.LLM_PROXY_ENABLED && Config.LLM_API_KEY != null
             && !Config.LLM_API_KEY.isEmpty() && tools != null && tools.length() > 0) {
-            Logger.d("FunctionCalling: proxy to " + Config.LLM_MODEL);
-            proxyLLM(os, body, stream);
+            for (java.util.Map.Entry<String, String> e : Config.LLM_ROUTES.entrySet()) {
+                if (model != null && model.startsWith(e.getKey())) {
+                    String[] parts = e.getValue().split("\\|");
+                    if (parts.length >= 3) {
+                        proxyBase = parts[0];
+                        proxyKey = parts[1];
+                        proxyModel = parts[2];
+                    }
+                    matchedRoute = e.getKey();
+                    break;
+                }
+            }
+        }
+        if (matchedRoute != null) {
+            Logger.d("FunctionCalling: proxy via route '" + matchedRoute + "' model=" + proxyModel);
+            proxyLLM(os, body, stream, proxyBase, proxyKey, proxyModel);
             return;
         }
         // 拼接 messages (system + history + user)
@@ -281,19 +299,19 @@ public class HttpServer {
      * LLM 代理: 转发到 OpenAI 兼容模型 (DeepSeek), 支持流式透传
      * API Key 从 Config (SharedPreferences) 读取, 不写死在代码
      */
-    private void proxyLLM(OutputStream os, String body, boolean stream) {
+    private void proxyLLM(OutputStream os, String body, boolean stream, String baseUrl, String apiKey, String proxyModel) {
         java.net.HttpURLConnection conn = null;
         try {
             // 重写 model 为代理模型
             JSONObject b = new JSONObject(body);
-            b.put("model", Config.LLM_MODEL);
+            b.put("model", proxyModel);
             String outBody = b.toString();
 
-            java.net.URL url = new java.net.URL(Config.LLM_BASE_URL + "/chat/completions");
+            java.net.URL url = new java.net.URL(baseUrl + "/chat/completions");
             conn = (java.net.HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer " + Config.LLM_API_KEY);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             conn.setDoOutput(true);
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(120000);
