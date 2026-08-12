@@ -4,6 +4,9 @@ import android.content.Context;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -162,6 +165,8 @@ public class HttpServer {
                 handleChatCompletions(os, body);
             } else if ("/v1/chat".equals(path) && "POST".equals(method)) {
                 handleV1Chat(os, body);
+            } else if ("/v1/exec".equals(path) && "POST".equals(method)) {
+                handleExec(os, body);
             } else {
                 sendResponse(os, 404, OpenAiCompat.buildError(
                     "Not Found", "invalid_request_error", "not_found").toString());
@@ -171,6 +176,72 @@ public class HttpServer {
         } catch (Exception e) {
             Logger.e("Handler error: " + e.getMessage());
             try { client.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    /** 代码执行沙箱 (root): shell / python - Java 版, 无 BSH 兼容问题 */
+    private void handleExec(OutputStream os, String body) throws Exception {
+        // 安全: 必须已配置 API_TOKEN
+        if (Config.API_TOKEN == null || Config.API_TOKEN.isEmpty()) {
+            sendResponse(os, 400, OpenAiCompat.buildError(
+                "exec requires API_TOKEN (security)", "invalid_request_error", "token_required").toString());
+            return;
+        }
+        JSONObject reqObj = new JSONObject(body);
+        String language = reqObj.optString("language", "shell");
+        String code = reqObj.optString("code", "");
+        if (code.isEmpty()) {
+            sendResponse(os, 400, OpenAiCompat.buildError(
+                "missing 'code'", "invalid_request_error", "missing_code").toString());
+            return;
+        }
+
+        File tmpFile = new File(context.getCacheDir(), "exec_" + System.currentTimeMillis() + (language.equals("python") ? ".py" : ".sh"));
+        File outFile = new File(context.getCacheDir(), "exec_out_" + System.currentTimeMillis() + ".txt");
+        boolean done = false;
+        try {
+            FileWriter fw = new FileWriter(tmpFile);
+            fw.write(code);
+            fw.close();
+            tmpFile.setExecutable(true);
+
+            String cmd;
+            if (language.equals("python")) {
+                cmd = "/usr/bin/python3.12 " + tmpFile.getAbsolutePath();
+            } else {
+                cmd = "sh " + tmpFile.getAbsolutePath();
+            }
+            // root 执行 + 输出重定向到文件 (避免管道阻塞)
+            ProcessBuilder pb = new ProcessBuilder("su", "-c", cmd + " > " + outFile.getAbsolutePath() + " 2>&1");
+            Logger.d("exec: " + cmd);
+            Process proc = pb.start();
+            done = proc.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (!done) proc.destroy();
+
+            String stdout = "";
+            if (outFile.exists()) {
+                FileInputStream fis = new FileInputStream(outFile);
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = fis.read(buf)) >= 0) baos.write(buf, 0, n);
+                fis.close();
+                stdout = new String(baos.toByteArray(), "UTF-8");
+            }
+
+            int exit = -1;
+            try { exit = proc.exitValue(); } catch (Exception ignored) {}
+
+            JSONObject resp = new JSONObject();
+            resp.put("language", language);
+            resp.put("stdout", stdout);
+            resp.put("stderr", "");
+            resp.put("exit_code", exit);
+            resp.put("timed_out", !done);
+            sendResponse(os, 200, resp.toString());
+        } finally {
+            tmpFile.delete();
+            outFile.delete();
         }
     }
 
