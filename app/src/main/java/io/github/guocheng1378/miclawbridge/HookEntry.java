@@ -38,8 +38,9 @@ public class HookEntry extends XposedModule {
             hook(attach).intercept(chain -> {
                 Object result = chain.proceed();
                 Context ctx = (Context) chain.getArg(0);
+                // 诊断版: 不启动服务, 只确认注入
                 if (ctx != null) {
-                    BridgeStarter.start(ctx.getApplicationContext());
+                    Logger.d("HookEntry: attach hooked, ctx obtained (diag)");
                 }
                 return result;
             });
@@ -60,8 +61,7 @@ public class HookEntry extends XposedModule {
             currentApp.setAccessible(true);
             Context ctx = (Context) currentApp.invoke(null);
             if (ctx != null) {
-                Logger.d("HookEntry: onPackageReady fallback");
-                BridgeStarter.start(ctx.getApplicationContext());
+                Logger.d("HookEntry: onPackageReady fallback ctx (diag)");
             }
         } catch (Throwable t) {
             Logger.e("HookEntry: onPackageReady fallback failed", t);
