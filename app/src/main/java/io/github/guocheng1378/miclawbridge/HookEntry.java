@@ -12,6 +12,20 @@ import io.github.libxposed.api.XposedModule;
 public class HookEntry extends XposedModule {
 
     @Override
+    public void onModuleLoaded(ModuleLoadedParam param) {
+        // system_server 加载时不做任何事 (模块只注入 com.aios.osbot)
+        if (param.isSystemServer()) {
+            Logger.d("HookEntry: system_server, skip");
+        }
+    }
+
+    @Override
+    public void onSystemServerStarting(SystemServerStartingParam param) {
+        // system_server: 不做任何事, 防止系统崩溃
+        Logger.d("HookEntry: onSystemServerStarting, skip");
+    }
+
+    @Override
     public void onPackageLoaded(PackageLoadedParam param) {
         // 早期 hook Application.attach (onPackageReady 时 attach 可能已发生, 会错过!)
         // 排除模块自身进程 (避免框架注入自身导致 UI 崩溃)
