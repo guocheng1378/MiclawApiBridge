@@ -19,7 +19,7 @@ public class Config {
     public static int THREAD_POOL_SIZE = 4;
 
     // LLM 代理 (Function Calling) - API Key 只存本地, 不硬编码
-    public static boolean LLM_PROXY_ENABLED = true;
+    public static boolean LLM_PROXY_ENABLED = false; // 默认全部走超级小爱(本地), 需代理才改true
     public static String LLM_BASE_URL = "https://api.deepseek.com/v1";
     public static String LLM_API_KEY = "";
     public static String LLM_MODEL = "deepseek-v4-flash";
