@@ -7,13 +7,18 @@ import java.lang.reflect.Method;
 import io.github.libxposed.api.XposedModule;
 
 /**
- * LibXposed API 102 模块入口 (最新 LSPosed 框架)
+ * LibXposed API 102 模块入口 (v2.0 恢复真实启动)
+ *
+ * 双保险启动:
+ *  1. onPackageLoaded: hook Application.attach, attach 时立即启动 Bridge
+ *  2. onPackageReady: 兜底, attach hook 可能错过时反射 ActivityThread.currentApplication 启动
+ * 排除 system_server 和模块自身进程, 防止系统崩溃 / UI 闪退
  */
 public class HookEntry extends XposedModule {
 
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
-        // system_server 加载时不做任何事 (模块只注入 com.aios.osbot)
+        // system_server 加载时不做任何事
         if (param.isSystemServer()) {
             Logger.d("HookEntry: system_server, skip");
         }
@@ -27,8 +32,7 @@ public class HookEntry extends XposedModule {
 
     @Override
     public void onPackageLoaded(PackageLoadedParam param) {
-        // 早期 hook Application.attach (onPackageReady 时 attach 可能已发生, 会错过!)
-        // 排除模块自身进程 (避免框架注入自身导致 UI 崩溃)
+        // 只注入目标 App; 排除模块自身进程 (避免框架注入自身导致 UI 崩溃)
         if (!"com.aios.osbot".equals(param.getPackageName())) return;
         if ("io.github.guocheng1378.miclawbridge".equals(param.getPackageName())) return;
         try {
@@ -37,10 +41,14 @@ public class HookEntry extends XposedModule {
             attach.setAccessible(true);
             hook(attach).intercept(chain -> {
                 Object result = chain.proceed();
-                Context ctx = (Context) chain.getArg(0);
-                // 诊断版: 不启动服务, 只确认注入
-                if (ctx != null) {
-                    Logger.d("HookEntry: attach hooked, ctx obtained (diag)");
+                try {
+                    Context ctx = (Context) chain.getArg(0);
+                    if (ctx != null) {
+                        BridgeStarter.start(ctx.getApplicationContext());
+                        Logger.d("MiclawBridge v2.0 started (attach)");
+                    }
+                } catch (Throwable t) {
+                    Logger.e("HookEntry: start via attach failed", t);
                 }
                 return result;
             });
@@ -52,7 +60,7 @@ public class HookEntry extends XposedModule {
 
     @Override
     public void onPackageReady(PackageReadyParam param) {
-        // 兜底: attach hook 可能错过, 直接反射拿当前 Application
+        // 兜底: attach hook 可能错过, 反射 ActivityThread.currentApplication 启动
         if (!"com.aios.osbot".equals(param.getPackageName())) return;
         if ("io.github.guocheng1378.miclawbridge".equals(param.getPackageName())) return;
         try {
@@ -61,11 +69,11 @@ public class HookEntry extends XposedModule {
             currentApp.setAccessible(true);
             Context ctx = (Context) currentApp.invoke(null);
             if (ctx != null) {
-                Logger.d("HookEntry: onPackageReady fallback ctx (diag)");
+                BridgeStarter.start(ctx.getApplicationContext());
+                Logger.d("MiclawBridge v2.0 started (onPackageReady fallback)");
             }
         } catch (Throwable t) {
             Logger.e("HookEntry: onPackageReady fallback failed", t);
         }
     }
-
 }

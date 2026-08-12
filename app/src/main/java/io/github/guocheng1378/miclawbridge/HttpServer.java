@@ -25,6 +25,11 @@ public class HttpServer {
     private final CliClient cli;
     private static final boolean CORS = true;
 
+    // v2.0: 限流 + 请求日志
+    private final java.util.List<JSONObject> reqLog = new java.util.ArrayList<>();
+    private int reqCount = 0;
+    private long reqWindowStart = System.currentTimeMillis();
+
     public HttpServer(Context context) {
         this.context = context;
         this.cli = new CliClient(context);
@@ -93,6 +98,7 @@ public class HttpServer {
             String requestLine = readHttpLine(is);
             if (requestLine == null) { client.close(); return; }
 
+            long reqStart = System.currentTimeMillis();
             String[] parts = requestLine.split(" ");
             String method = parts[0];
             String target = parts.length > 1 ? parts[1] : "/";
@@ -141,12 +147,24 @@ public class HttpServer {
                 client.close(); return;
             }
 
+            // v2.0 限流 (RATE_LIMIT=0 关闭)
+            if (Config.RATE_LIMIT > 0) {
+                long now = System.currentTimeMillis();
+                if (now - reqWindowStart > 60000) { reqWindowStart = now; reqCount = 0; }
+                reqCount++;
+                if (reqCount > Config.RATE_LIMIT) {
+                    sendResponse(os, 429, OpenAiCompat.buildError(
+                        "Too Many Requests", "rate_limit_error", "rate_limited").toString());
+                    client.close(); return;
+                }
+            }
+
             if ("OPTIONS".equals(method)) {
                 sendResponse(os, 200, "{}");
             } else if ("/".equals(path)) {
                 JSONObject r = new JSONObject();
                 r.put("name", "MiclawApiBridge");
-                r.put("version", "1.1.0");
+                r.put("version", "2.0.0");
                 r.put("docs", "/openapi.json");
                 r.put("models", "/v1/models");
                 sendResponse(os, 200, r.toString());
@@ -164,7 +182,7 @@ public class HttpServer {
             } else if ("/v1/admin/status".equals(path) && "GET".equals(method)) {
                 JSONObject st = new JSONObject();
                 st.put("status", "ok");
-                st.put("version", "1.5.0");
+                st.put("version", "2.0.0");
                 st.put("agent", Config.defaultAgentId);
                 st.put("agentName", Config.agentName);
                 st.put("socket", Config.activeSocket);
@@ -182,6 +200,33 @@ public class HttpServer {
                 handleChatCompletions(os, body);
             } else if ("/v1/chat".equals(path) && "POST".equals(method)) {
                 handleV1Chat(os, body);
+            } else if ("/v1/chat/reset".equals(path) && "POST".equals(method)) {
+                // v2.0 清空会话历史
+                JSONObject reqObj = new JSONObject(body);
+                String chatId = reqObj.has("chat_id") ? reqObj.optString("chat_id")
+                        : (reqObj.has("user") ? reqObj.optString("user") : Config.API_CHAT_ID);
+                if (chatId.isEmpty()) chatId = Config.API_CHAT_ID;
+                JSONObject params = new JSONObject();
+                params.put("chatId", chatId);
+                JSONObject cr = cli.sendRaw("conversation.clear", params, 5000);
+                JSONObject resp = new JSONObject();
+                resp.put("ok", true);
+                resp.put("chat_id", chatId);
+                resp.put("cleared", cr == null ? "maybe" : "done");
+                sendResponse(os, 200, resp.toString());
+            } else if ("/v1/admin/logs".equals(path) && "GET".equals(method)) {
+                // v2.0 请求日志 (最近 100 条)
+                JSONObject lr = new JSONObject();
+                lr.put("count", reqLog.size());
+                lr.put("logs", new JSONArray(reqLog));
+                sendResponse(os, 200, lr.toString());
+            } else if ("/v1/admin/reload".equals(path) && "GET".equals(method)) {
+                // v2.0 配置热重载 (从 SharedPreferences 重读)
+                Config.loadFrom(context.getApplicationContext());
+                JSONObject rr = new JSONObject();
+                rr.put("ok", true);
+                rr.put("port", Config.HTTP_PORT);
+                sendResponse(os, 200, rr.toString());
             } else if ("/v1/exec".equals(path) && "POST".equals(method)) {
                 handleExec(os, body);
             } else {
@@ -189,11 +234,36 @@ public class HttpServer {
                     "Not Found", "invalid_request_error", "not_found").toString());
             }
 
+            // v2.0 请求日志
+            if (Config.REQ_LOGGING) {
+                try {
+                    JSONObject logEntry = new JSONObject();
+                    logEntry.put("t", System.currentTimeMillis() / 1000);
+                    logEntry.put("method", method);
+                    logEntry.put("path", path);
+                    logEntry.put("ms", System.currentTimeMillis() - reqStart);
+                    reqLog.add(logEntry);
+                    if (reqLog.size() > 100) reqLog.remove(0);
+                } catch (Exception ignored) {}
+            }
+
             client.close();
         } catch (Exception e) {
             Logger.e("Handler error: " + e.getMessage());
             try { client.close(); } catch (Exception ignored) {}
         }
+    }
+
+    /** v2.0 重试包装: AI 调用失败自动重试 1 次 */
+    private CliClient.CliResult chatWithRetry(String text, String chatId, String agentId,
+            CliClient.TextSink sink, org.json.JSONArray images) {
+        CliClient.CliResult r = cli.chat(text, chatId, agentId, sink, images);
+        if (Config.RETRY && r != null && r.error != null) {
+            Logger.d("Chat failed (" + r.error + "), retrying once...");
+            try { Thread.sleep(300); } catch (Exception ignored) {}
+            r = cli.chat(text, chatId, agentId, sink, images);
+        }
+        return r;
     }
 
     /** 代码执行沙箱 (root): shell / python - Java 版, 无 BSH 兼容问题 */
@@ -274,7 +344,7 @@ public class HttpServer {
             return;
         }
 
-        CliClient.CliResult r = cli.chat(text, chatId, agentId);
+        CliClient.CliResult r = chatWithRetry(text, chatId, agentId, null, null);
         JSONObject resp = new JSONObject();
         resp.put("ok", r.error == null);
         resp.put("reply", r.reply);
@@ -416,7 +486,7 @@ public class HttpServer {
             os.write(sbHeader.toString().getBytes("UTF-8"));
             os.flush();
 
-            CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId, t -> {
+            CliClient.CliResult r = chatWithRetry(text, Config.API_CHAT_ID, agentId, t -> {
                 try {
                     os.write(OpenAiCompat.buildStreamChunk(model, t, null).getBytes("UTF-8"));
                     os.flush();
@@ -429,7 +499,7 @@ public class HttpServer {
             return;
         }
 
-        CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId, null, useImages);
+        CliClient.CliResult r = chatWithRetry(text, Config.API_CHAT_ID, agentId, null, useImages);
         if (r.error != null) {
             sendResponse(os, 500, OpenAiCompat.buildError(
                 r.error, "server_error", "upstream_error").toString());

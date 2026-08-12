@@ -2,6 +2,8 @@
 
 把小米超级小爱 (com.aios.osbot) 的 AI 能力暴露为本机 **OpenAI 兼容 HTTP API** 的 Xposed 模块（LibXposed API 102）。
 
+> **v2.0**：恢复真实服务启动（HookEntry 双保险）、全新设置界面（端口/Token/LLM 代理/路由表/限流/日志开关）、限流、请求日志（`/v1/admin/logs`）、会话重置（`/v1/chat/reset`）、配置热重载（`/v1/admin/reload`）、AI 调用失败自动重试。
+
 ## ✨ 功能
 
 - **OpenAI 兼容**：`POST /v1/chat/completions`（流式 SSE + 非流式）
@@ -42,14 +44,14 @@ curl http://127.0.0.1:8787/v1/chat/completions \
 | `POST /v1/completions` | legacy 兼容 |
 | `POST /v1/exec` | 代码执行（shell/python，需 Token+root） |
 | `POST /v1/chat` | 原生简版 |
-| `POST /v1/chat/reset` | 清空会话 |
+| `POST /v1/chat/reset` | 清空会话 (v2.0) |
 | `GET /v1/models` | 模型列表 |
 | `GET /v1/tools` | 超级小爱 550 工具（带描述） |
 | `GET /health` | 健康检查 |
 | `GET /openapi.json` | OpenAPI 文档 |
 | `GET /v1/admin/status` | 运行状态 |
-| `GET /v1/admin/reload` | 重载配置 |
-| `GET /v1/admin/logs` | 请求日志 |
+| `GET /v1/admin/reload` | 重载配置 (v2.0 从设置界面热读) |
+| `GET /v1/admin/logs` | 请求日志 (v2.0, 最近 100 条) |
 
 ## ⚙️ 配置（模块设置界面）
 
@@ -77,3 +79,22 @@ curl http://127.0.0.1:8787/v1/chat/completions \
 git clone https://github.com/guocheng1378/MiclawApiBridge
 # Android Studio 打开，编译即可
 ```
+
+---
+
+## 📜 版本历史
+
+- **2.0** (2026-08): 恢复真实服务启动（HookEntry 双保险 attach + onPackageReady）、全新设置界面（原生组件防闪退）、限流、请求日志、会话重置、配置热重载、失败自动重试、Verbose 开关
+- **1.7.6** (diag): 极简诊断版（排查 UI 闪退）
+- **1.7.5**: 纯 LibXposed102 模块
+- **1.7.4**: system_server 加载保护
+- **1.7.3**: 双入口排除模块自身进程
+- **1.7.2**: UI 回退原生组件（修复闪退）
+- **1.7.0**: Material3 分组卡片界面 + 状态实时检测
+- **1.6.1**: attach 时机修复 + 防重入 + 端口自动避让
+- **1.6.0**: Java 代码执行沙箱 /v1/exec
+- **1.5.0**: 多模态识图 + 大模型化
+- **1.4.0**: 默认全部走超级小爱（本地）
+- **1.2.0**: 设置 UI + Function Calling
+- **1.1.0**: OpenAI 标准 API
+- **1.0.0**: 首个版本

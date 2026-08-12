@@ -205,7 +205,13 @@ public class CliClient {
     }
 
     /** 通过 CLI 发任意请求并返回首帧 JSONObject */
+    /** 简单请求 (无附加参数) */
     public JSONObject sendRaw(String type, long timeoutMs) {
+        return sendRaw(type, null, timeoutMs);
+    }
+
+    /** 通用 CLI 请求: 支持附加参数 (v2.0, 供 conversation.clear 等使用) */
+    public JSONObject sendRaw(String type, JSONObject params, long timeoutMs) {
         LocalSocket sock = null;
         try {
             sock = new LocalSocket();
@@ -221,6 +227,13 @@ public class CliClient {
             JSONObject req = new JSONObject();
             req.put("type", type);
             req.put("id", id);
+            if (params != null) {
+                java.util.Iterator<String> keys = params.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    req.put(k, params.get(k));
+                }
+            }
             os.write((req.toString() + "\n").getBytes("UTF-8"));
             os.flush();
 

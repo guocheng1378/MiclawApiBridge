@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Miclaw API Bridge</string>
-    <string name="module_desc">把小米超级小爱(com.aios.osbot)的 AI 能力暴露为本机 OpenAI 兼容 HTTP API (LibXposed API 102)</string>
+    <string name="app_name">Miclaw API Bridge v2.0</string>
+    <string name="module_desc">把小米超级小爱(com.aios.osbot)的 AI 能力暴露为本机 OpenAI 兼容 HTTP API (LibXposed API 102, v2.0 带设置界面)</string>
 </resources>

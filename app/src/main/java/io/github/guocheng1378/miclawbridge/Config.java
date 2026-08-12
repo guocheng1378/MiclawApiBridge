@@ -18,6 +18,12 @@ public class Config {
     public static String API_CHAT_ID = "api-gateway";
     public static int THREAD_POOL_SIZE = 4;
 
+    // v2.0 新增: 限流 / 请求日志 / 重试 / Verbose
+    public static int RATE_LIMIT = 0;           // 每分钟最大请求数, 0=关闭
+    public static boolean REQ_LOGGING = true;   // 记录请求日志 (最近 100 条)
+    public static boolean RETRY = true;         // AI 调用失败自动重试 1 次
+    public static boolean VERBOSE = false;      // Verbose 调试日志
+
     // LLM 代理 (Function Calling) - API Key 只存本地, 不硬编码
     public static boolean LLM_PROXY_ENABLED = false; // 默认全部走超级小爱(本地), 需代理才改true
     public static String LLM_BASE_URL = "https://api.deepseek.com/v1";
@@ -42,6 +48,10 @@ public class Config {
             LLM_BASE_URL = sp.getString("llm_base_url", LLM_BASE_URL);
             LLM_API_KEY = sp.getString("llm_api_key", LLM_API_KEY);
             LLM_MODEL = sp.getString("llm_model", LLM_MODEL);
+            RATE_LIMIT = sp.getInt("rate_limit", RATE_LIMIT);
+            REQ_LOGGING = sp.getBoolean("req_logging", REQ_LOGGING);
+            RETRY = sp.getBoolean("retry", RETRY);
+            VERBOSE = sp.getBoolean("verbose", VERBOSE);
             // 解析路由表 (每行 ROUTE_前缀=BaseURL|APIKey|模型名)
             LLM_ROUTES.clear();
             String routes = sp.getString("llm_routes", "");
@@ -62,6 +72,9 @@ public class Config {
             Logger.d("Config loaded: port=" + HTTP_PORT
                 + " proxy=" + LLM_PROXY_ENABLED
                 + " routes=" + LLM_ROUTES.keySet().size()
+                + " limit=" + RATE_LIMIT
+                + " log=" + REQ_LOGGING
+                + " retry=" + RETRY
                 + " key=" + (LLM_API_KEY.isEmpty() ? "empty" : "***"));
         } catch (Exception e) {
             Logger.e("Config.loadFrom: " + e.getMessage());
