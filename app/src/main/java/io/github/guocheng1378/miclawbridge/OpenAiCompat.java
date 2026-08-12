@@ -187,4 +187,89 @@ public class OpenAiCompat {
             return new JSONObject();
         }
     }
+
+    /** 图片 URL/路径/dataURL → ImageContent JSON ({base64Data,mimeType}) */
+    public static JSONObject imageToContent(String url) {
+        if (url == null) return null;
+        String u = url.trim();
+        if (u.isEmpty()) return null;
+        byte[] bytes = null;
+        String mime = "image/jpeg";
+        try {
+            if (u.startsWith("data:")) {
+                int idx = u.indexOf(",");
+                if (idx > 0) {
+                    String meta = u.substring(5, idx);
+                    if (meta.contains("png")) mime = "image/png";
+                    else if (meta.contains("gif")) mime = "image/gif";
+                    else if (meta.contains("webp")) mime = "image/webp";
+                    bytes = java.util.Base64.getDecoder().decode(u.substring(idx + 1));
+                }
+            } else if (u.startsWith("http")) {
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(20000);
+                java.io.InputStream is = conn.getInputStream();
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = is.read(buf)) >= 0) baos.write(buf, 0, n);
+                is.close();
+                bytes = baos.toByteArray();
+            } else {
+                String fp = u;
+                if (fp.startsWith("file://")) fp = fp.substring(7);
+                java.io.File f = new java.io.File(fp);
+                if (f.exists()) {
+                    java.io.FileInputStream fis = new java.io.FileInputStream(f);
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = fis.read(buf)) >= 0) baos.write(buf, 0, n);
+                    fis.close();
+                    bytes = baos.toByteArray();
+                }
+            }
+        } catch (Exception e) {
+            Logger.e("imageToContent: " + e.getMessage());
+        }
+        if (bytes == null || bytes.length == 0) return null;
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("base64Data", java.util.Base64.getEncoder().encodeToString(bytes));
+            obj.put("mimeType", mime);
+            return obj;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** JSON 模式兜底: 从回答中提取合法 JSON (或包装) */
+    public static String extractJson(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+        try { new JSONObject(t); return t; } catch (Exception ignored) {}
+        int i1 = t.indexOf("```json");
+        if (i1 >= 0) {
+            int i2 = t.indexOf("```", i1 + 7);
+            if (i2 > i1) {
+                String frag = t.substring(i1 + 7, i2).trim();
+                try { new JSONObject(frag); return frag; } catch (Exception ignored) {}
+            }
+        }
+        i1 = t.indexOf("{");
+        int i2 = t.lastIndexOf("}");
+        if (i1 >= 0 && i2 > i1) {
+            String frag = t.substring(i1, i2 + 1);
+            try { new JSONObject(frag); return frag; } catch (Exception ignored) {}
+        }
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("reply", s);
+            return obj.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

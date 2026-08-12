@@ -82,6 +82,11 @@ public class CliClient {
 
     /** 流式版: 每收到增量文本回调 sink (完整帧去重: 已推过增量则跳过) */
     public CliResult chat(String text, String chatId, String agentId, TextSink sink) {
+        return chat(text, chatId, agentId, sink, null);
+    }
+
+    /** 多模态版: 支持 images (JSONArray of ImageContent) */
+    public CliResult chat(String text, String chatId, String agentId, TextSink sink, org.json.JSONArray images) {
         LocalSocket sock = null;
         try {
             sock = new LocalSocket();
@@ -108,6 +113,7 @@ public class CliClient {
             req.put("text", text);
             if (chatId.length() > 0) req.put("chatId", chatId);
             if (agentId.length() > 0) req.put("agentId", agentId);
+            if (images != null && images.length() > 0) req.put("images", images);
 
             Logger.d("CLI send: " + req.toString());
             os.write((req.toString() + "\n").getBytes("UTF-8"));

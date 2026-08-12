@@ -141,6 +141,16 @@ public class HttpServer {
             } else if ("/v1/models".equals(path)
                        && ("GET".equals(method) || "POST".equals(method))) {
                 sendResponse(os, 200, OpenAiCompat.buildModelList().toString());
+            } else if ("/v1/admin/status".equals(path) && "GET".equals(method)) {
+                JSONObject st = new JSONObject();
+                st.put("status", "ok");
+                st.put("version", "1.5.0");
+                st.put("agent", Config.defaultAgentId);
+                st.put("agentName", Config.agentName);
+                st.put("socket", Config.activeSocket);
+                st.put("llmProxy", Config.LLM_PROXY_ENABLED && Config.LLM_API_KEY != null && !Config.LLM_API_KEY.isEmpty());
+                st.put("routes", Config.LLM_ROUTES.size());
+                sendResponse(os, 200, st.toString());
             } else if ("/v1/tools".equals(path) && "GET".equals(method)) {
                 JSONObject tr = new JSONObject();
                 tr.put("object", "list");
@@ -218,25 +228,81 @@ public class HttpServer {
             proxyLLM(os, body, stream, proxyBase, proxyKey, proxyModel);
             return;
         }
-        // 拼接 messages (system + history + user)
+        // 拼接 messages (system + history + user) - 支持多模态图片
+        JSONArray imagesArr = new JSONArray();
         StringBuilder sb = new StringBuilder();
+
+        // 默认大模型人设 (无 system 时注入)
+        boolean hasSystem = false;
+        if (messages != null) {
+            for (int i = 0; i < messages.length(); i++) {
+                JSONObject m = messages.optJSONObject(i);
+                if (m != null && "system".equals(m.optString("role", ""))) { hasSystem = true; break; }
+            }
+        }
+        if (!hasSystem) {
+            sb.append("系统设定：你是通用 AI 助手，具备文件处理、代码执行、联网搜索、数据分析等能力。回答问题要完整专业、条理清晰；简单问题直接回答，不要调用工具；涉及文件、代码、实时数据、设备操作时才使用工具。\n\n");
+        }
+
         if (messages != null) {
             for (int i = 0; i < messages.length(); i++) {
                 JSONObject m = messages.optJSONObject(i);
                 if (m == null) continue;
                 String role = m.optString("role", "user");
-                String content = m.optString("content", "");
-                if (content.isEmpty()) continue;
-                if ("system".equals(role)) {
-                    sb.append("系统指令: ").append(content).append("\n");
-                } else if ("assistant".equals(role)) {
-                    sb.append("助手: ").append(content).append("\n");
+                Object c = m.opt("content");
+                String cStr = "";
+                if (c instanceof String) {
+                    cStr = c.toString();
+                } else if (c instanceof JSONArray) {
+                    JSONArray carr = (JSONArray) c;
+                    for (int j = 0; j < carr.length(); j++) {
+                        JSONObject part = carr.optJSONObject(j);
+                        if (part == null) continue;
+                        String ptype = part.optString("type", "");
+                        if ("text".equals(ptype)) {
+                            if (!cStr.isEmpty()) cStr += "\n";
+                            cStr += part.optString("text", "");
+                        } else if ("image_url".equals(ptype)) {
+                            JSONObject iu = part.optJSONObject("image_url");
+                            String iurl = iu != null ? iu.optString("url", "") : part.optString("image_url", "");
+                            if (!iurl.isEmpty()) {
+                                JSONObject ic = OpenAiCompat.imageToContent(iurl);
+                                if (ic != null) imagesArr.put(ic);
+                            }
+                        }
+                    }
                 } else {
-                    sb.append("用户: ").append(content).append("\n");
+                    cStr = m.optString("content", "");
                 }
+                if (cStr.isEmpty()) continue;
+                if ("system".equals(role)) sb.append("系统设定：").append(cStr).append("\n");
+                else if ("assistant".equals(role)) sb.append("助手: ").append(cStr).append("\n");
+                else if ("tool".equals(role)) sb.append("[工具结果] ").append(cStr).append(" [/工具结果]\n");
+                else sb.append("用户: ").append(cStr).append("\n");
             }
         }
+
+        // JSON 模式 + 参数映射 (更像大模型)
+        boolean jsonMode = false;
+        JSONObject rf = reqObj.optJSONObject("response_format");
+        if (rf != null && "json_object".equals(rf.optString("type", ""))) {
+            jsonMode = true;
+            sb.append("严格要求：你必须只输出一个合法 JSON 对象。禁止使用 Markdown、列表符号、解释文字。示例格式：{\"key\":\"value\"}\n");
+        }
+        double temp = reqObj.optDouble("temperature", -1);
+        if (temp >= 0) {
+            if (temp < 0.5) sb.append("回答要求：严谨、准确、简洁、事实导向，避免发散。\n");
+            else if (temp > 1.2) sb.append("回答要求：有创意、发散、生动，可以适当发挥。\n");
+        }
+        int maxTok = reqObj.optInt("max_tokens", -1);
+        if (maxTok > 0) {
+            if (maxTok < 100) sb.append("回答要求：非常简短，一句话以内。\n");
+            else if (maxTok < 300) sb.append("回答要求：简洁，控制在几行内。\n");
+            else if (maxTok > 2000) sb.append("回答要求：详细完整，尽量展开论述，条理清晰。\n");
+        }
+
         String text = sb.toString().trim();
+        JSONArray useImages = imagesArr.length() > 0 ? imagesArr : null;
         if (text.isEmpty()) {
             sendResponse(os, 400, OpenAiCompat.buildError(
                 "messages is required", "invalid_request_error", "missing_messages").toString());
@@ -267,7 +333,7 @@ public class HttpServer {
                     os.write(OpenAiCompat.buildStreamChunk(model, t, null).getBytes("UTF-8"));
                     os.flush();
                 } catch (Exception ignored) {}
-            });
+            }, useImages);
 
             os.write(OpenAiCompat.buildStreamChunk(model, null, "stop").getBytes("UTF-8"));
             os.write("data: [DONE]\n\n".getBytes("UTF-8"));
@@ -275,13 +341,18 @@ public class HttpServer {
             return;
         }
 
-        CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId);
+        CliClient.CliResult r = cli.chat(text, Config.API_CHAT_ID, agentId, null, useImages);
         if (r.error != null) {
             sendResponse(os, 500, OpenAiCompat.buildError(
                 r.error, "server_error", "upstream_error").toString());
             return;
         }
-        sendResponse(os, 200, OpenAiCompat.buildSyncResponse(model, r.reply).toString());
+        String reply = r.reply;
+        if (jsonMode) {
+            String j = OpenAiCompat.extractJson(reply);
+            reply = j != null ? j : "{}";
+        }
+        sendResponse(os, 200, OpenAiCompat.buildSyncResponse(model, reply).toString());
     }
 
     private String readHttpLine(InputStream is) throws Exception {
