@@ -173,6 +173,7 @@ public class HttpServer {
                 r.put("status", "ok");
                 r.put("agent", Config.defaultAgentId);
                 r.put("socket", Config.activeSocket);
+                r.put("root", RootUtil.isRootAvailable());
                 sendResponse(os, 200, r.toString());
             } else if ("/openapi.json".equals(path)) {
                 sendResponse(os, 200, OpenAiCompat.openapiDoc().toString());
@@ -186,6 +187,7 @@ public class HttpServer {
                 st.put("agent", Config.defaultAgentId);
                 st.put("agentName", Config.agentName);
                 st.put("socket", Config.activeSocket);
+                st.put("root", RootUtil.isRootAvailable());
                 st.put("llmProxy", Config.LLM_PROXY_ENABLED && Config.LLM_API_KEY != null && !Config.LLM_API_KEY.isEmpty());
                 st.put("routes", Config.LLM_ROUTES.size());
                 sendResponse(os, 200, st.toString());
@@ -299,9 +301,17 @@ public class HttpServer {
                 cmd = "sh " + tmpFile.getAbsolutePath();
             }
             // root 执行 + 输出重定向到文件 (避免管道阻塞)
+            Logger.d("exec: " + cmd + " (root=" + RootUtil.isRootAvailable() + ")");
             ProcessBuilder pb = new ProcessBuilder("su", "-c", cmd + " > " + outFile.getAbsolutePath() + " 2>&1");
-            Logger.d("exec: " + cmd);
-            Process proc = pb.start();
+            Process proc = null;
+            try {
+                proc = pb.start();
+            } catch (Exception e) {
+                // 无 root 时降级: 直接以当前进程执行
+                Logger.d("exec no-root fallback: " + e.getMessage());
+                pb = new ProcessBuilder("sh", "-c", cmd + " > " + outFile.getAbsolutePath() + " 2>&1");
+                proc = pb.start();
+            }
             done = proc.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
             if (!done) proc.destroy();
 

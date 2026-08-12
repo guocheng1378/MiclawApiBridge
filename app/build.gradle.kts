@@ -10,7 +10,7 @@ android {
         applicationId = "io.github.guocheng1378.miclawbridge"
         minSdk = 26
         targetSdk = 34
-        versionCode = 17
+        versionCode = 18
         versionName = "2.0"
     }
 

@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
 
     private EditText etPort, etToken, etBaseUrl, etApiKey, etModel, etRoutes, etRateLimit;
     private CheckBox cbProxy, cbReqLog, cbRetry, cbVerbose;
-    private TextView tvStatus;
+    private TextView tvStatus, tvRoot;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -80,6 +80,13 @@ public class MainActivity extends Activity {
         btnRefresh.setText("刷新状态");
         btnRefresh.setOnClickListener(v -> checkStatus());
         root.addView(btnRefresh);
+
+        tvRoot = new TextView(this);
+        tvRoot.setText("🔑 Root: 检测中...");
+        tvRoot.setTextSize(14);
+        tvRoot.setPadding(dp(12), dp(10), dp(12), dp(10));
+        tvRoot.setBackgroundColor(Color.parseColor("#F2F4F7"));
+        root.addView(tvRoot);
 
         // ---------- 基本设置 ----------
         root.addView(sectionLabel("基本设置"));
@@ -212,6 +219,7 @@ public class MainActivity extends Activity {
         tvStatus.setText("● 检测中: 127.0.0.1:" + targetPort + " ...");
         new Thread(() -> {
             boolean ok = isPortOpen(targetPort);
+            boolean rootOk = RootUtil.isRootAvailable();
             handler.post(() -> {
                 if (ok) {
                     tvStatus.setText("● 服务运行中: http://127.0.0.1:" + targetPort);
@@ -219,6 +227,13 @@ public class MainActivity extends Activity {
                 } else {
                     tvStatus.setText("○ 服务未运行: 127.0.0.1:" + targetPort + " (需 LSPosed 启用模块 + 作用域勾选 com.aios.osbot + 重启超级小爱)");
                     tvStatus.setTextColor(Color.parseColor("#D93025"));
+                }
+                if (rootOk) {
+                    tvRoot.setText("🔑 Root: 可用 (su 正常, /v1/exec 代码执行已开启)");
+                    tvRoot.setTextColor(Color.parseColor("#188038"));
+                } else {
+                    tvRoot.setText("🔑 Root: 不可用 - 请到 Magisk/KernelSU 授权 com.aios.osbot (或不用 /v1/exec)");
+                    tvRoot.setTextColor(Color.parseColor("#B06000"));
                 }
             });
         }).start();
