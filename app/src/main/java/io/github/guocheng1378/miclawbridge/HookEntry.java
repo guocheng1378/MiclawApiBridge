@@ -14,7 +14,9 @@ public class HookEntry extends XposedModule {
     @Override
     public void onPackageLoaded(PackageLoadedParam param) {
         // 早期 hook Application.attach (onPackageReady 时 attach 可能已发生, 会错过!)
+        // 排除模块自身进程 (避免框架注入自身导致 UI 崩溃)
         if (!"com.aios.osbot".equals(param.getPackageName())) return;
+        if ("io.github.guocheng1378.miclawbridge".equals(param.getPackageName())) return;
         try {
             Class<?> appClass = Class.forName("android.app.Application", true, param.getDefaultClassLoader());
             Method attach = appClass.getDeclaredMethod("attach", Context.class);
@@ -37,6 +39,7 @@ public class HookEntry extends XposedModule {
     public void onPackageReady(PackageReadyParam param) {
         // 兜底: attach hook 可能错过, 直接反射拿当前 Application
         if (!"com.aios.osbot".equals(param.getPackageName())) return;
+        if ("io.github.guocheng1378.miclawbridge".equals(param.getPackageName())) return;
         try {
             Class<?> atClass = Class.forName("android.app.ActivityThread", true, param.getClassLoader());
             Method currentApp = atClass.getDeclaredMethod("currentApplication");

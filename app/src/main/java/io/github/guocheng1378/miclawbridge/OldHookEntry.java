@@ -12,7 +12,9 @@ public class OldHookEntry implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(final XC_LoadPackage.LoadPackageParam lpparam) {
+        // 排除模块自身进程 (避免框架注入自身导致 UI 崩溃)
         if (!"com.aios.osbot".equals(lpparam.packageName)) return;
+        if ("io.github.guocheng1378.miclawbridge".equals(lpparam.packageName)) return;
         try {
             XposedHelpers.findAndHookMethod(
                 "android.app.Application", lpparam.classLoader,
