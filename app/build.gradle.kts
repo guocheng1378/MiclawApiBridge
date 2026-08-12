@@ -10,8 +10,8 @@ android {
         applicationId = "io.github.guocheng1378.miclawbridge"
         minSdk = 26
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.7.4"
+        versionCode = 14
+        versionName = "1.7.5"
     }
 
     buildTypes {
@@ -31,6 +31,4 @@ android {
 dependencies {
     // LibXposed API 102 (最新 LSPosed 框架 API, Maven Central)
     compileOnly("io.github.libxposed:api:102.0.0")
-    // 老 Xposed API (双兼容入口, 适配更多框架)
-    compileOnly(files("libs/api-82.jar"))
 }
