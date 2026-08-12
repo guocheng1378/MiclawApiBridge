@@ -18,7 +18,7 @@ android {
         // 固定签名: 保证所有构建(本地/GitHub Actions)签名一致, 可覆盖安装
         // 密钥文件已入库 (keystore/miclaw.jks), 个人模块使用; 生产项目建议改用 GitHub Secrets
         create("release") {
-            storeFile = file("keystore/miclaw.jks")
+            storeFile = rootProject.file("keystore/miclaw.jks")
             storePassword = "miclaw123"
             keyAlias = "miclaw"
             keyPassword = "miclaw123"
