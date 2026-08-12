@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#FF6200EE</color>
+    <color name="brand_dark">#FF3700B3</color>
+    <color name="bg">#FFF6F7FB</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="text_primary">#FF1A1A1A</color>
+    <color name="text_secondary">#FF666666</color>
+    <color name="success">#FF2E7D32</color>
+    <color name="error">#FFC62828</color>
+</resources>

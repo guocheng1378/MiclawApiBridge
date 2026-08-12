@@ -1,14 +1,30 @@
 package io.github.guocheng1378.miclawbridge;
 
-import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Switch;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class MainActivity extends Activity {
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.TextInputEditText;
+
+public class MainActivity extends AppCompatActivity {
+
+    private TextView tvServerStatus;
+    private TextView tvVersion;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    private final Runnable statusRunnable = new Runnable() {
+        @Override public void run() {
+            checkServerStatus();
+            handler.postDelayed(this, 3000);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -17,17 +33,20 @@ public class MainActivity extends Activity {
 
         SharedPreferences sp = getSharedPreferences(Config.PREFS, MODE_PRIVATE);
 
-        EditText etPort = findViewById(R.id.et_port);
-        EditText etToken = findViewById(R.id.et_token);
-        Switch swProxy = findViewById(R.id.sw_proxy);
-        EditText etBase = findViewById(R.id.et_base);
-        EditText etKey = findViewById(R.id.et_key);
-        EditText etModel = findViewById(R.id.et_model);
-        EditText etRoutes = findViewById(R.id.et_routes);
-        TextView tvStatus = findViewById(R.id.tv_status);
-        Button btnSave = findViewById(R.id.btn_save);
+        TextInputEditText etPort = findViewById(R.id.et_port);
+        TextInputEditText etToken = findViewById(R.id.et_token);
+        MaterialSwitch swProxy = findViewById(R.id.sw_proxy);
+        TextInputEditText etBase = findViewById(R.id.et_base);
+        TextInputEditText etKey = findViewById(R.id.et_key);
+        TextInputEditText etModel = findViewById(R.id.et_model);
+        TextInputEditText etRoutes = findViewById(R.id.et_routes);
+        MaterialButton btnSave = findViewById(R.id.btn_save);
+        tvServerStatus = findViewById(R.id.tv_server_status);
+        tvVersion = findViewById(R.id.tv_version);
 
-        // 回显当前配置
+        tvVersion.setText("v" + BuildConfig.VERSION_NAME);
+
+        // 回显配置
         etPort.setText(String.valueOf(sp.getInt("http_port", Config.HTTP_PORT)));
         etToken.setText(sp.getString("api_token", Config.API_TOKEN));
         swProxy.setChecked(sp.getBoolean("llm_proxy_enabled", Config.LLM_PROXY_ENABLED));
@@ -35,6 +54,10 @@ public class MainActivity extends Activity {
         etKey.setText(sp.getString("llm_api_key", Config.LLM_API_KEY));
         etModel.setText(sp.getString("llm_model", Config.LLM_MODEL));
         etRoutes.setText(sp.getString("llm_routes", ""));
+
+        // 状态检测
+        checkServerStatus();
+        handler.postDelayed(statusRunnable, 3000);
 
         btnSave.setOnClickListener(v -> {
             try {
@@ -47,12 +70,44 @@ public class MainActivity extends Activity {
                     .putString("llm_model", etModel.getText().toString().trim())
                     .putString("llm_routes", etRoutes.getText().toString().trim())
                     .apply();
-                tvStatus.setText("✅ 已保存！重启超级小爱后生效");
-                tvStatus.setTextColor(0xFF2E7D32);
+                Toast.makeText(this, "✅ 已保存！重启超级小爱后生效", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
-                tvStatus.setText("保存失败: " + e.getMessage());
-                tvStatus.setTextColor(0xFFC62828);
+                Toast.makeText(this, "保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void checkServerStatus() {
+        final int port;
+        try {
+            port = Integer.parseInt(((TextInputEditText) findViewById(R.id.et_port)).getText().toString().trim());
+        } catch (Exception e) {
+            return;
+        }
+        new Thread(() -> {
+            boolean up = false;
+            try {
+                java.net.Socket s = new java.net.Socket();
+                s.connect(new java.net.InetSocketAddress("127.0.0.1", port), 800);
+                s.close();
+                up = true;
+            } catch (Exception ignored) {}
+            final boolean finalUp = up;
+            handler.post(() -> {
+                if (finalUp) {
+                    tvServerStatus.setText("● 运行中  127.0.0.1:" + port);
+                    tvServerStatus.setTextColor(0xFF2E7D32);
+                } else {
+                    tvServerStatus.setText("○ 未运行（需启用模块并重启超级小爱）");
+                    tvServerStatus.setTextColor(0xFFC62828);
+                }
+            });
+        }).start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacks(statusRunnable);
     }
 }

@@ -1,36 +1,79 @@
 # MiclawApiBridge
 
-把小米超级小爱 (com.aios.osbot) 的 AI 能力暴露为本机 **OpenAI 兼容 HTTP API** 的 Xposed 模块。
+把小米超级小爱 (com.aios.osbot) 的 AI 能力暴露为本机 **OpenAI 兼容 HTTP API** 的 Xposed 模块（LibXposed API 102）。
 
-## 功能
-- 设置界面 (模块图标点击进入): 端口 / Token / LLM 代理配置
-- Function Calling 代理: 带 tools 请求转发 DeepSeek (LSPilot 工具调用支持)
-- LLM API Key 安全存储在本机 SharedPreferences, 不写入仓库
-- 本机 HTTP 服务 (127.0.0.1:8787)
-- OpenAI 兼容: `POST /v1/chat/completions`（流式/非流式）
-- 模型列表: `GET /v1/models`
-- 健康检查: `GET /health`
-- 原生接口: `POST /v1/chat`
-- 独立会话隔离（不污染主对话）
-- 自动探测 Agent / socket / 登录状态
+## ✨ 功能
 
-## 兼容性
-- 基于 **LibXposed API 102**（最新 LSPosed 框架 API，Maven Central: io.github.libxposed:api:102.0.0）
-- 入口: META-INF/xposed/java_init.list + module.prop (minApiVersion=101, targetApiVersion=102)
-- 作用域: scope.list = com.aios.osbot
+- **OpenAI 兼容**：`POST /v1/chat/completions`（流式 SSE + 非流式）
+- **多模态识图**：图片 URL / base64 / 本地路径 → 超级小爱识别
+- **大模型化**：默认通用 AI 人设、JSON 模式、temperature/max_tokens
+- **550 内置工具**：天气/日历/设备控制/文件等（`GET /v1/tools` 带描述）
+- **多轮会话**：`user` 字段控制会话，上下文记忆
+- **代码执行**：`POST /v1/exec`（root，shell/python）
+- **管理**：状态页 / 请求日志 / 配置热重载 / 限流 / 重试 / 并发保护
+- **全部走本地**：零外部 API 依赖（LLM 代理可选）
 
-## 使用
-1. 从 GitHub Release 下载 APK 或 Android Studio 编译
-2. 安装并在 **LSPosed (1.9+)** 中启用（作用域: com.aios.osbot）
-3. 重启超级小爱
-4. 任意 OpenAI 客户端接入:
-   - Base URL: `http://127.0.0.1:8787/v1`
-   - API Key: 任意
-   - Model: `osbot.main` / `software-dev` / `osbot.calendar` / `400000000000024`
+## 📱 安装
 
-## 配置
-见 `Config.java`：端口、token、超时、会话ID 等。
+1. 下载 APK 安装
+2. LSPosed（1.9.2+）启用模块，作用域勾选 `com.aios.osbot`
+3. 打开模块图标配置（可选：Token、端口、LLM 代理）
+4. 重启超级小爱
 
-## 依赖
-- LSPosed / Xposed 框架 (API 82)
-- 超级小爱 App (com.aios.osbot)
+## 🔌 使用（OpenAI 客户端接入）
+
+```
+Base URL: http://127.0.0.1:8787/v1
+API Key:  模块设置里的 Token（可留空）
+Model:    osbot.main
+```
+
+```bash
+curl http://127.0.0.1:8787/v1/chat/completions \
+  -H "Authorization: Bearer 你的Token" \
+  -d '{"model":"osbot.main","messages":[{"role":"user","content":"你好"}]}'
+```
+
+## 📡 API 端点
+
+| 端点 | 说明 |
+|---|---|
+| `POST /v1/chat/completions` | OpenAI 对话（流式/非流式） |
+| `POST /v1/completions` | legacy 兼容 |
+| `POST /v1/exec` | 代码执行（shell/python，需 Token+root） |
+| `POST /v1/chat` | 原生简版 |
+| `POST /v1/chat/reset` | 清空会话 |
+| `GET /v1/models` | 模型列表 |
+| `GET /v1/tools` | 超级小爱 550 工具（带描述） |
+| `GET /health` | 健康检查 |
+| `GET /openapi.json` | OpenAPI 文档 |
+| `GET /v1/admin/status` | 运行状态 |
+| `GET /v1/admin/reload` | 重载配置 |
+| `GET /v1/admin/logs` | 请求日志 |
+
+## ⚙️ 配置（模块设置界面）
+
+- **HTTP 端口**：默认 8787（被占自动避让 +1）
+- **API Token**：鉴权；代码执行必填
+- **LLM 代理**：Function Calling 可选（DeepSeek 等）
+- **路由表**：`前缀=BaseURL|Key|模型名`
+
+## 🛡️ 安全
+
+- 仅监听 127.0.0.1（本机）
+- `/v1/exec` 强制要求 Token（root 任意代码执行）
+- 代码执行 30 秒超时自动终止
+
+## 🐛 常见问题
+
+- **服务没起来**：确认模块启用 + 作用域勾选 + 重启超级小爱
+- **端口冲突**：自动避让（日志会显示实际端口）
+- **代码执行超时**：先给超级小爱授权 root（KernelSU/Magisk）
+- **流式不输出**：确认客户端支持 SSE
+
+## 🔨 开发
+
+```bash
+git clone https://github.com/guocheng1378/MiclawApiBridge
+# Android Studio 打开，编译即可
+```
