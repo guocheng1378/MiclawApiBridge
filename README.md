@@ -1,5 +1,13 @@
 # MiclawApiBridge
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white&style=for-the-badge" alt="Android"/>
+  <img src="https://img.shields.io/badge/Xposed-LSPosed-02A28B?style=for-the-badge" alt="Xposed"/>
+  <img src="https://img.shields.io/badge/Java-ED8B00?logo=java&logoColor=white&style=for-the-badge" alt="Java"/>
+  <img src="https://img.shields.io/badge/License-MIT-2E8B57?style=for-the-badge" alt="MIT"/>
+  <img src="https://img.shields.io/badge/HyperOS-Xiaomi-FF6900?style=for-the-badge" alt="HyperOS"/>
+</p>
+
 把小米超级小爱 (com.aios.osbot) 的 AI 能力暴露为本机 **OpenAI 兼容 HTTP API** 的 Xposed 模块（LibXposed API 102）。
 
 > **v2.0**：恢复真实服务启动（HookEntry 双保险）、全新设置界面（端口/Token/LLM 代理/路由表/限流/日志开关）、限流、请求日志（`/v1/admin/logs`）、会话重置（`/v1/chat/reset`）、配置热重载（`/v1/admin/reload`）、AI 调用失败自动重试。
